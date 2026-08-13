@@ -46,9 +46,9 @@ export function enrichStock(item: any, idx: number): SignalStock {
   }
 
   // 4. 5 Gates Checks & Narratives
-  const sma20 = item['20D_SMA'] || cmp * 0.98;
-  const sma50 = item['50D_SMA'] || cmp * 0.95;
-  const sma200 = item['200D_SMA'] || cmp * 0.90;
+  const sma20 = item['20D_SMA'] ?? (cmp * 0.98);
+  const sma50 = item['50D_SMA'] ?? (cmp * 0.95);
+  const sma200 = item['200D_SMA'] ?? (cmp * 0.90);
   const tradedVal = item.Traded_Value || cmp * (item.Volume || 10000);
 
   let gates: [boolean, boolean, boolean, boolean, boolean] = item.Gates;
@@ -56,7 +56,7 @@ export function enrichStock(item: any, idx: number): SignalStock {
     const gate1Regime = score >= 50 && exitPressure < 60;
     const gate2Trend = cmp >= sma200 || cmp >= sma20;
     const gate3Momentum = rsi21 > 50 && adx > 20;
-    const gate4Volatility = atrPct < 5.5;
+    const gate4Volatility = atrPct <= 5.5;
     const gate5Quality = exitPressure < 45 && (item.PE ? item.PE < 65 : true);
     gates = [gate1Regime, gate2Trend, gate3Momentum, gate4Volatility, gate5Quality];
   }
@@ -202,8 +202,8 @@ export function enrichStock(item: any, idx: number): SignalStock {
 
   const apolloScore = item.Apollo_Score ?? parseFloat(Math.min(148, Math.max(15, score * 1.25)).toFixed(1));
   const layerScore = item.LayerSignal_Score ?? score;
-  const apolloAction = item.Apollo_Action ?? (apolloScore >= 95 ? 'ENTRY' : apolloScore < 50 ? 'EXIT' : 'HOLD');
-  const layerAction = item.LayerSignal_Action ?? (layerScore >= 70 ? 'ENTRY' : layerScore < 45 ? 'EXIT' : 'HOLD');
+  const apolloAction = item.Apollo_Action ?? (apolloScore >= 95 && gatesPassCount >= 4 ? 'ENTRY' : apolloScore < 50 || gatesPassCount <= 1 ? 'EXIT' : 'HOLD');
+  const layerAction = item.LayerSignal_Action ?? (layerScore >= 72 && exitPressure < 45 ? 'ENTRY' : exitPressure >= 60 || layerScore < 45 ? 'EXIT' : 'HOLD');
 
   return {
     ...item,
@@ -268,8 +268,8 @@ export function computeFunnelAndBuckets(stocks: SignalStock[]): SignalsSummary {
 
     if (action === 'ENTRY') {
       if (stk.LayerSignal_Score >= 80 && stk.Exit_Pressure < 35) quality.STRONG++;
-      else if (stk.LayerSignal_Score >= 65) quality.GOOD++;
-      else if (stk.LayerSignal_Score >= 50) quality.MODERATE++;
+      else if (stk.LayerSignal_Score >= 68 && stk.Exit_Pressure < 50) quality.GOOD++;
+      else if (stk.LayerSignal_Score >= 50 && stk.Exit_Pressure < 65) quality.MODERATE++;
       else quality.WEAK++;
     }
   });

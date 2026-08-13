@@ -172,7 +172,7 @@ export default function App() {
 
       <TabBar activeTab={activeTab} onTabChange={(t) => setActiveTab(t)} unreadAlertsCount={unreadAlertsCount} />
 
-      <MarketRegimeBanner />
+      <MarketRegimeBanner stocks={stocks} />
 
       {/* CONTENT AREA (FILLS REMAINING VIEWPORT HEIGHT) */}
       <div className="flex-1 overflow-y-auto bg-[#0B1120]">
@@ -204,7 +204,7 @@ export default function App() {
         )}
 
         {activeTab === 'system' && (
-          <SystemTab health={systemHealth || undefined} />
+          <SystemTab health={systemHealth || undefined} stocks={stocks} onRefreshData={() => fetchSignals(true)} />
         )}
       </div>
 

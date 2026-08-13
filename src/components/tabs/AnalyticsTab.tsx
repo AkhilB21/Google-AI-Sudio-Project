@@ -896,7 +896,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
 
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 font-bold rounded border border-indigo-500/30 text-xs">
-                    Apollo Score: {activeProfileStock.Apollo_Score} / 100
+                    Apollo Score: {activeProfileStock.Apollo_Score} / 148
                   </span>
                   <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-bold rounded border border-emerald-500/30 text-xs">
                     Layer Score: {activeProfileStock.LayerSignal_Score} / 100

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, Filter, CheckCircle2, ShieldAlert, Zap, Layers, PlusCircle, Trash2, Mail, Smartphone, Send } from 'lucide-react';
 import { AlertItem } from '../../types';
 
@@ -28,7 +28,7 @@ export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onS
     webhook: false,
   });
 
-  // Custom Alert Rules state
+  // Custom Alert Rules state backed by SQLite
   const [rules, setRules] = useState<AlertRule[]>([
     { id: 'r1', name: 'L1 Breakout Alert', condition: 'Stock enters L1 Bucket && RSI21 > 60', channel: 'Push, Email', enabled: true },
     { id: 'r2', name: 'Throwback Pattern Alert', condition: 'Stock in L2 Bucket && Price pullback <= 2%', channel: 'Push', enabled: true },
@@ -38,29 +38,62 @@ export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onS
   const [newRuleName, setNewRuleName] = useState('');
   const [newRuleCond, setNewRuleCond] = useState('');
 
-  const handleAddRule = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetch('/api/db/rules')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setRules(data);
+        }
+      })
+      .catch((err) => console.error('Failed to load rules:', err));
+  }, []);
+
+  const handleAddRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRuleName.trim() || !newRuleCond.trim()) return;
-    setRules((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        name: newRuleName.trim(),
-        condition: newRuleCond.trim(),
-        channel: 'Push',
-        enabled: true,
-      },
-    ]);
-    setNewRuleName('');
-    setNewRuleCond('');
+
+    const payload = {
+      name: newRuleName.trim(),
+      condition: newRuleCond.trim(),
+      channel: channels.email && channels.push ? 'Push, Email' : channels.email ? 'Email' : 'Push',
+    };
+
+    try {
+      const res = await fetch('/api/db/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setRules((prev) => [
+        ...prev,
+        {
+          id: data.id || `R_${Date.now()}`,
+          name: payload.name,
+          condition: payload.condition,
+          channel: payload.channel,
+          enabled: true,
+        },
+      ]);
+      setNewRuleName('');
+      setNewRuleCond('');
+    } catch (err) {
+      console.error('Failed to add rule:', err);
+    }
   };
 
   const toggleRule = (id: string) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
   };
 
-  const deleteRule = (id: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
+  const deleteRule = async (id: string) => {
+    try {
+      await fetch(`/api/db/rules/${id}`, { method: 'DELETE' });
+      setRules((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      console.error('Failed to delete rule:', err);
+    }
   };
 
   const filteredAlerts = alerts.filter((a) => {

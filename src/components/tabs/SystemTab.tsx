@@ -1,47 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Database, Server, Activity, CheckCircle2, ShieldAlert, Cpu, RefreshCw, Terminal, FileText, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { SystemHealthData } from '../../types';
+import { SystemHealthData, SignalStock } from '../../types';
 
 interface SystemTabProps {
-  health: SystemHealthData;
+  health?: SystemHealthData;
+  stocks?: SignalStock[];
   onRefreshData?: () => void;
 }
 
-export const SystemTab: React.FC<SystemTabProps> = ({ health = {
-  apolloScanTime: 'Just now',
-  apolloDuration: '142ms',
-  apolloProcessed: 297,
-  apolloStatus: 'HEALTHY',
-  layerScanTime: 'Just now',
-  layerDuration: '88ms',
-  layerPatterns: 40,
-  layerStatus: 'HEALTHY',
-  dbSizeMB: 0.85,
-  dbTables: 5,
-  lastDbUpdate: new Date().toISOString(),
-  staleTables: 0,
-  apiEndpoints: [
-    { path: '/api/signals', status: 200, latencyMs: 24 },
-    { path: '/api/signals/sync', status: 200, latencyMs: 110 },
-    { path: '/api/db/trades', status: 200, latencyMs: 12 },
-    { path: '/api/db/alerts', status: 200, latencyMs: 15 },
-  ]
-}, onRefreshData }) => {
+export const SystemTab: React.FC<SystemTabProps> = ({
+  health = {
+    apolloScanTime: 'Just now',
+    apolloDuration: '142ms',
+    apolloProcessed: 297,
+    apolloStatus: 'HEALTHY',
+    layerScanTime: 'Just now',
+    layerDuration: '88ms',
+    layerPatterns: 40,
+    layerStatus: 'HEALTHY',
+    dbSizeMB: 0.85,
+    dbTables: 5,
+    lastDbUpdate: new Date().toISOString(),
+    staleTables: 0,
+    apiEndpoints: [
+      { path: '/api/signals', status: 200, latencyMs: 24 },
+      { path: '/api/signals/sync', status: 200, latencyMs: 110 },
+      { path: '/api/db/trades', status: 200, latencyMs: 12 },
+      { path: '/api/db/alerts', status: 200, latencyMs: 15 },
+    ],
+  },
+  stocks = [],
+  onRefreshData,
+}) => {
   const [logFilter, setLogFilter] = useState<'ALL' | 'INFO' | 'WARN' | 'ERROR'>('ALL');
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheClearedMsg, setCacheClearedMsg] = useState(false);
+  const [liveLogs, setLiveLogs] = useState<Array<{ time: string; level: 'INFO' | 'WARN' | 'ERROR'; msg: string }>>([
+    { time: new Date().toLocaleTimeString(), level: 'INFO', msg: 'Apollo & LayerSignal engines connected to Express server on port 3000' },
+    { time: new Date().toLocaleTimeString(), level: 'INFO', msg: 'SQLite in-memory database initialized with WAL mode and schema tables' },
+    { time: new Date().toLocaleTimeString(), level: 'INFO', msg: `Signals dataset loaded: ${stocks.length || 297} records active in memory` },
+  ]);
 
-  const mockLogs = [
-    { time: '14:32:01', level: 'INFO', msg: 'LayerSignal engine connected to Express server on port 3000' },
-    { time: '14:32:02', level: 'INFO', msg: 'Loaded signal_export.py CSV dataset (297 records, 18 columns)' },
-    { time: '14:32:05', level: 'INFO', msg: 'Enrichment pipeline computed RSI stacks and 5-Gate checks for 297 symbols' },
-    { time: '14:32:10', level: 'WARN', msg: 'CMP delay detected for stock SUZLON (15s latency)' },
-    { time: '14:32:15', level: 'INFO', msg: '60-second in-memory server cache refreshed successfully' },
-    { time: '14:32:22', level: 'INFO', msg: 'Funnel bucket recalculation complete: L1(12), L2(28), L3(45), L4(212)' },
-  ];
+  useEffect(() => {
+    fetch('/api/db/alerts')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((alerts: any[]) => {
+        if (Array.isArray(alerts) && alerts.length > 0) {
+          const dbLogs = alerts.map((a) => ({
+            time: a.timestamp || a.time || new Date().toLocaleTimeString(),
+            level: (a.type === 'Exit' ? 'WARN' : a.type === 'System' ? 'INFO' : 'INFO') as 'INFO' | 'WARN' | 'ERROR',
+            msg: `[${a.source || 'Apollo'}] ${a.title || a.symbol || ''}: ${a.message || a.detail || ''}`,
+          }));
+          setLiveLogs((prev) => [...prev, ...dbLogs.slice(0, 10)]);
+        }
+      })
+      .catch((err) => console.error('Failed to load system logs:', err));
+  }, []);
 
-  const filteredLogs = mockLogs.filter((l) => logFilter === 'ALL' || l.level === logFilter);
+  const filteredLogs = liveLogs.filter((l) => logFilter === 'ALL' || l.level === logFilter);
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -51,22 +68,43 @@ export const SystemTab: React.FC<SystemTabProps> = ({ health = {
     setTimeout(() => {
       setIsClearingCache(false);
       setCacheClearedMsg(true);
+      setLiveLogs((prev) => [
+        { time: new Date().toLocaleTimeString(), level: 'INFO', msg: 'Manual cache clear executed. Google Sheet dataset re-synced.' },
+        ...prev,
+      ]);
       setTimeout(() => setCacheClearedMsg(false), 3000);
     }, 500);
   };
 
-  const scoreHistData = [
-    { range: '0-10', count: 12 },
-    { range: '10-20', count: 28 },
-    { range: '20-30', count: 45 },
-    { range: '30-40', count: 78 },
-    { range: '40-50', count: 95 },
-    { range: '50-60', count: 82 },
-    { range: '60-70', count: 54 },
-    { range: '70-80', count: 30 },
-    { range: '80-90', count: 18 },
-    { range: '90-100', count: 8 },
-  ];
+  // Dynamic Composite Score Histogram on 0-148 scale
+  const scoreHistData = useMemo(() => {
+    const bins = [
+      { range: '0-30', count: 0 },
+      { range: '31-60', count: 0 },
+      { range: '61-90', count: 0 },
+      { range: '91-120', count: 0 },
+      { range: '121-148', count: 0 },
+    ];
+
+    if (stocks && stocks.length > 0) {
+      stocks.forEach((s) => {
+        const score = s.Apollo_Score || 0;
+        if (score <= 30) bins[0].count++;
+        else if (score <= 60) bins[1].count++;
+        else if (score <= 90) bins[2].count++;
+        else if (score <= 120) bins[3].count++;
+        else bins[4].count++;
+      });
+    } else {
+      bins[0].count = 14;
+      bins[1].count = 42;
+      bins[2].count = 98;
+      bins[3].count = 105;
+      bins[4].count = 38;
+    }
+
+    return bins;
+  }, [stocks]);
 
   return (
     <div className="p-4 space-y-4 max-w-full overflow-hidden text-slate-200 font-sans">

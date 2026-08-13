@@ -229,9 +229,15 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
 
     const apolloScore = parseFloat(Math.min(148, Math.max(15, Math.round(passCount * 10 + (layerScore * 0.98)))).toFixed(1));
 
-    let layerAction = "HOLD";
-    if (layerScore >= 72 && exitPressure < 45 && passCount >= 4) layerAction = "ENTRY";
-    else if (exitPressure >= 60 || passCount <= 1) layerAction = "EXIT";
+    let apolloAction: "ENTRY" | "HOLD" | "EXIT" | "FLAT" = "HOLD";
+    if (apolloScore >= 95 && passCount >= 4) apolloAction = "ENTRY";
+    else if (apolloScore < 50 || passCount <= 1) apolloAction = "EXIT";
+    else if (apolloScore >= 65) apolloAction = "HOLD";
+    else apolloAction = "FLAT";
+
+    let layerAction: "ENTRY" | "HOLD" | "EXIT" | "FLAT" = "HOLD";
+    if (layerScore >= 72 && exitPressure < 45) layerAction = "ENTRY";
+    else if (exitPressure >= 60 || layerScore < 45) layerAction = "EXIT";
     else if (layerScore >= 50) layerAction = "HOLD";
     else layerAction = "FLAT";
 
@@ -399,7 +405,7 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
     rows.push({
       Symbol: symbol,
       Date: new Date().toISOString().split("T")[0],
-      Apollo_Action: layerAction,
+      Apollo_Action: apolloAction,
       Apollo_Score: apolloScore,
       Pct_Change: pctChange,
       LayerSignal_Action: layerAction,

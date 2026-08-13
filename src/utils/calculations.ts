@@ -7,9 +7,9 @@ export function getQualityLevel(stock: SignalStock): QualityLevel {
   const score = stock.LayerSignal_Score || 0;
   const ep = stock.Exit_Pressure || 0;
 
-  if (score >= 85 && ep < 30) return 'STRONG';
-  if (score >= 75 && ep < 50) return 'GOOD';
-  if (score >= 60 && ep < 60) return 'MODERATE';
+  if (score >= 80 && ep < 35) return 'STRONG';
+  if (score >= 68 && ep < 50) return 'GOOD';
+  if (score >= 50 && ep < 65) return 'MODERATE';
   return 'WEAK';
 }
 

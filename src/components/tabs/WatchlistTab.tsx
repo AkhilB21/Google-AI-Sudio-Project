@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -67,7 +67,7 @@ export const WatchlistTab: React.FC<WatchlistTabProps> = ({
   // Filter Pills for Left Stock List
   const [leftFilter, setLeftFilter] = useState<'ALL' | 'L1' | 'L2' | 'L3' | 'ENTRY'>('ALL');
 
-  // Trade Journal state
+  // Trade Journal state backed by SQLite
   const [journalEntries, setJournalEntries] = useState<
     Array<{ id: string; symbol: string; date: string; note: string; target: number; stopLoss: number }>
   >([
@@ -81,27 +81,60 @@ export const WatchlistTab: React.FC<WatchlistTabProps> = ({
     },
   ]);
 
+  useEffect(() => {
+    fetch('/api/db/journal')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setJournalEntries(data);
+        }
+      })
+      .catch((err) => console.error('Failed to load journal entries:', err));
+  }, []);
+
   const [newNote, setNewNote] = useState('');
   const [newTarget, setNewTarget] = useState<string>('');
   const [newSL, setNewSL] = useState<string>('');
 
-  const handleAddJournal = (e: React.FormEvent) => {
+  const handleAddJournal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentStock || !newNote.trim()) return;
-    setJournalEntries((prev) => [
-      {
-        id: Date.now().toString(),
-        symbol: currentStock.Symbol,
-        date: new Date().toISOString().split('T')[0],
-        note: newNote.trim(),
-        target: parseFloat(newTarget) || parseFloat((currentStock.CMP * 1.08).toFixed(1)),
-        stopLoss: parseFloat(newSL) || parseFloat((currentStock.CMP * 0.95).toFixed(1)),
-      },
-      ...prev,
-    ]);
-    setNewNote('');
-    setNewTarget('');
-    setNewSL('');
+    const targetVal = parseFloat(newTarget) || parseFloat((currentStock.CMP * 1.08).toFixed(1));
+    const slVal = parseFloat(newSL) || parseFloat((currentStock.CMP * 0.95).toFixed(1));
+    const entryDate = new Date().toISOString().split('T')[0];
+
+    const payload = {
+      symbol: currentStock.Symbol,
+      date: entryDate,
+      note: newNote.trim(),
+      target: targetVal,
+      stopLoss: slVal,
+    };
+
+    try {
+      const res = await fetch('/api/db/journal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      setJournalEntries((prev) => [
+        {
+          id: data.id || `J_${Date.now()}`,
+          symbol: currentStock.Symbol,
+          date: entryDate,
+          note: payload.note,
+          target: targetVal,
+          stopLoss: slVal,
+        },
+        ...prev,
+      ]);
+      setNewNote('');
+      setNewTarget('');
+      setNewSL('');
+    } catch (err) {
+      console.error('Failed to save journal entry:', err);
+    }
   };
 
   const filteredStockList = stocks.filter((s) => {
