@@ -54,22 +54,22 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
   // 1. DYNAMIC APOLLO ENGINE ANALYTICS COMPUTATIONS
   // -------------------------------------------------------------
 
-  // Apollo Composite Score Distribution (Histogram data)
+  // Apollo Composite Score Distribution (0-148 scale)
   const apolloScoreDistribution = useMemo(() => {
     const dist = [
-      { range: '0-20 (Lagging)', count: 0, fill: '#f85149' },
-      { range: '21-40 (Weak)', count: 0, fill: '#d29922' },
-      { range: '41-60 (Consolidating)', count: 0, fill: '#8b949e' },
-      { range: '61-80 (Strong Setup)', count: 0, fill: '#58a6ff' },
-      { range: '81-100 (Prime Apollo)', count: 0, fill: '#3fb950' },
+      { range: '0-30 (Lagging)', count: 0, fill: '#f85149' },
+      { range: '31-60 (Weak)', count: 0, fill: '#d29922' },
+      { range: '61-90 (Consolidating)', count: 0, fill: '#8b949e' },
+      { range: '91-120 (Strong Setup)', count: 0, fill: '#58a6ff' },
+      { range: '121-148 (Prime Apollo)', count: 0, fill: '#3fb950' },
     ];
 
     stocks.forEach((s) => {
       const score = s.Apollo_Score || 0;
-      if (score <= 20) dist[0].count++;
-      else if (score <= 40) dist[1].count++;
-      else if (score <= 60) dist[2].count++;
-      else if (score <= 80) dist[3].count++;
+      if (score <= 30) dist[0].count++;
+      else if (score <= 60) dist[1].count++;
+      else if (score <= 90) dist[2].count++;
+      else if (score <= 120) dist[3].count++;
       else dist[4].count++;
     });
 
@@ -426,8 +426,8 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
             <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400">Mean Apollo Composite Score</span>
-              <div className="text-2xl font-black text-indigo-400">{avgApolloScore} / 100</div>
-              <p className="text-[10px] text-slate-500">Universe Composite Average</p>
+              <div className="text-2xl font-black text-indigo-400">{avgApolloScore} / 148</div>
+              <p className="text-[10px] text-slate-500">Universe Composite Average (0–148 Max)</p>
             </div>
 
             <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-1">
@@ -456,7 +456,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
               <div className="flex justify-between items-center">
                 <h4 className="font-bold text-white uppercase text-xs flex items-center gap-1.5">
                   <Zap className="w-4 h-4 text-indigo-400" />
-                  <span>Apollo Composite Score Distribution (0–100)</span>
+                  <span>Apollo Composite Score Distribution (0–148 Pts)</span>
                 </h4>
                 <span className="text-[10px] text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded border border-indigo-500/30 font-bold">
                   Live Histogram
@@ -702,6 +702,37 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
                 <span>Start Capital: ₹10,00,000</span>
                 <span>Current Balance: ₹{tradeStats.equityCurveData[tradeStats.equityCurveData.length - 1]?.Equity.toLocaleString()}</span>
               </div>
+            </div>
+          </div>
+
+          {/* MAE / MFE EXCURSION DISTRIBUTION CHART */}
+          <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3 font-mono text-xs">
+            <div className="flex justify-between items-center">
+              <h4 className="font-bold text-white uppercase text-xs flex items-center gap-1.5">
+                <Sliders className="w-4 h-4 text-emerald-400" />
+                <span>Maximum Adverse Excursion (MAE) vs Maximum Favorable Excursion (MFE) Distribution</span>
+              </h4>
+              <span className="text-[10px] text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">
+                Excursion Analysis ({trades.length} Closed Trades)
+              </span>
+            </div>
+
+            <div className="h-52 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={maeMfeData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
+                  <XAxis dataKey="range" stroke="#64748b" fontSize={10} />
+                  <YAxis stroke="#64748b" fontSize={10} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', fontSize: '11px' }} />
+                  <Bar dataKey="MAE" name="Max Adverse Excursion (Drawdown %)" fill="#f85149" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="MFE" name="Max Favorable Excursion (Run-up %)" fill="#3fb950" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="flex justify-between items-center text-[10px] text-slate-400 bg-black/30 p-2 rounded border border-white/5">
+              <span><span className="text-red-400 font-bold">MAE</span> measures peak intra-trade drawdown before exit</span>
+              <span><span className="text-emerald-400 font-bold">MFE</span> measures peak intra-trade unrealized profit before exit</span>
             </div>
           </div>
 

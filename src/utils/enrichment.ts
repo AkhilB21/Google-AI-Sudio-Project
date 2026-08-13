@@ -159,9 +159,18 @@ export function enrichStock(item: any, idx: number): SignalStock {
     { date: '2026-01-20', event: 'Throwback Re-entry', price: parseFloat((cmp * 0.68).toFixed(1)), outcomePct: 12.8 },
   ];
 
+  const apolloScore = item.Apollo_Score ?? parseFloat(Math.min(148, Math.max(15, score * 1.25)).toFixed(1));
+  const layerScore = item.LayerSignal_Score ?? score;
+  const apolloAction = item.Apollo_Action ?? (apolloScore >= 95 ? 'ENTRY' : apolloScore < 50 ? 'EXIT' : 'HOLD');
+  const layerAction = item.LayerSignal_Action ?? (layerScore >= 70 ? 'ENTRY' : layerScore < 45 ? 'EXIT' : 'HOLD');
+
   return {
     ...item,
     Symbol: sym,
+    Apollo_Score: apolloScore,
+    LayerSignal_Score: layerScore,
+    Apollo_Action: apolloAction,
+    LayerSignal_Action: layerAction,
     Bucket: bucket,
     LStage: lstage,
     ELStatus: elStatus,

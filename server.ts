@@ -227,7 +227,7 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
       (cmp < sma20 ? 15 : 0)
     )).toFixed(1));
 
-    const apolloScore = parseFloat(Math.min(99, Math.max(25, layerScore * 0.95 + (passCount * 2))).toFixed(1));
+    const apolloScore = parseFloat(Math.min(148, Math.max(15, Math.round(passCount * 10 + (layerScore * 0.98)))).toFixed(1));
 
     let layerAction = "HOLD";
     if (layerScore >= 72 && exitPressure < 45 && passCount >= 4) layerAction = "ENTRY";
