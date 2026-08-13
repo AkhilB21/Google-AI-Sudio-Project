@@ -278,7 +278,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                   : 'bg-black/30 text-slate-400 border-white/5'
               }`}
             >
-              2,400 Universe
+              {summary?.total || 2400} Universe
             </button>
             <span className="text-slate-600">&gt;</span>
 
@@ -290,7 +290,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                   : 'bg-black/30 text-slate-400 border-white/5'
               }`}
             >
-              1,800 Liquid
+              {summary?.liquid || 1800} Liquid
             </button>
             <span className="text-slate-600">&gt;</span>
 
@@ -302,7 +302,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                   : 'bg-black/30 text-slate-400 border-white/5'
               }`}
             >
-              1,200 Scored
+              {summary?.scored || 1200} Scored
             </button>
             <span className="text-slate-600">&gt;</span>
 
@@ -314,7 +314,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                   : 'bg-black/30 text-slate-400 border-white/5'
               }`}
             >
-              340 Signal-Bearing
+              {summary?.signalBearing || 340} Signal-Bearing
             </button>
           </div>
 
@@ -372,6 +372,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                   <th onClick={() => handleSort('52W_Prox')} className="p-2.5 font-bold cursor-pointer hover:text-white">
                     52W Pos
                   </th>
+                  <th className="p-2.5 font-bold">Trend Sparkline</th>
                   <th className="p-2.5 font-bold">MCap</th>
                   <th onClick={() => handleSort('PE')} className="p-2.5 font-bold cursor-pointer hover:text-white">
                     P/E
@@ -476,6 +477,35 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                             </div>
                           </td>
 
+                          {/* SPARKLINE SVG */}
+                          <td className="p-2.5">
+                            {stk.Sparkline && stk.Sparkline.length > 0 ? (
+                              <svg className="w-16 h-5 stroke-emerald-400 fill-none overflow-visible" viewBox="0 0 100 30">
+                                {(() => {
+                                  const pts = stk.Sparkline;
+                                  const min = Math.min(...pts);
+                                  const max = Math.max(...pts) || min + 1;
+                                  const coords = pts.map((val, i) => {
+                                    const x = (i / (pts.length - 1)) * 100;
+                                    const y = 28 - ((val - min) / (max - min)) * 26;
+                                    return `${x},${y}`;
+                                  }).join(' ');
+                                  const isUp = pts[pts.length - 1] >= pts[0];
+                                  return (
+                                    <polyline
+                                      fill="none"
+                                      stroke={isUp ? '#3fb950' : '#f85149'}
+                                      strokeWidth="2"
+                                      points={coords}
+                                    />
+                                  );
+                                })()}
+                              </svg>
+                            ) : (
+                              <span className="text-slate-600 text-[9px]">N/A</span>
+                            )}
+                          </td>
+
                           <td className="p-2.5 text-slate-400">{stk.MCap || 'Large'}</td>
                           <td className="p-2.5 text-slate-300">{stk.PE?.toFixed(1)}</td>
                           <td className="p-2.5 font-bold text-indigo-300">{stk.FQS || 'A'}</td>
@@ -495,60 +525,79 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                         {/* EXPANDED IN-PLACE ROW DETAILS */}
                         {isExpanded && (
                           <tr className="bg-[#0B1120] border-y border-[#334155]">
-                            <td colSpan={20} className="p-4 space-y-3 font-mono text-xs">
+                            <td colSpan={21} className="p-4 space-y-3 font-mono text-xs">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* SUB-SECTION 1: POOL BREAKDOWN */}
+                                {/* SUB-SECTION 1: POOL BREAKDOWN & SUB-SCORES */}
                                 <div className="p-3 bg-[#111827] rounded-lg border border-[#334155] space-y-2">
                                   <h4 className="font-bold text-indigo-300 flex items-center justify-between text-[11px]">
-                                    <span>RSI Pool Classification &amp; Win Rate</span>
+                                    <span>{stk.Symbol} — Sub-Score Profile &amp; RSI Pool</span>
                                     <span className="text-[10px] text-slate-400">LayerSignal Engine</span>
                                   </h4>
-                                  <div className="space-y-1 text-[11px] text-slate-300">
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">RSI Combination Pool:</span>
-                                      <span className="font-bold text-white">Pool #4 (RSI21 &gt; 60 &amp; RSI36 &gt; 50)</span>
+                                  <div className="space-y-1.5 text-[10px] text-slate-300">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-400">Trend Score:</span>
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-24 h-1.5 bg-slate-800 rounded">
+                                          <div className="h-full bg-emerald-400 rounded" style={{ width: `${stk.SubScores?.trend || 75}%` }} />
+                                        </div>
+                                        <span className="font-bold text-white w-6">{stk.SubScores?.trend || 75}</span>
+                                      </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Historical Pool Win Rate:</span>
-                                      <span className="font-bold text-[#3fb950]">68.4% (Backtest N=142)</span>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-400">Momentum Score:</span>
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-24 h-1.5 bg-slate-800 rounded">
+                                          <div className="h-full bg-blue-400 rounded" style={{ width: `${stk.SubScores?.momentum || 80}%` }} />
+                                        </div>
+                                        <span className="font-bold text-white w-6">{stk.SubScores?.momentum || 80}</span>
+                                      </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-400">Average Profit / Trade:</span>
-                                      <span className="font-bold text-emerald-400">+5.82%</span>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-400">Volume Turnover:</span>
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-24 h-1.5 bg-slate-800 rounded">
+                                          <div className="h-full bg-purple-400 rounded" style={{ width: `${stk.SubScores?.volume || 70}%` }} />
+                                        </div>
+                                        <span className="font-bold text-white w-6">{stk.SubScores?.volume || 70}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-between pt-1 border-t border-white/5">
+                                      <span className="text-slate-400">RSI Stack (21/36/56):</span>
+                                      <span className="font-bold text-white">
+                                        <span className="text-[#3fb950]">{stk.RSI21}</span> / <span className="text-[#58a6ff]">{stk.RSI36}</span> / <span className="text-[#d29922]">{stk.RSI56}</span>
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* SUB-SECTION 2: GATE DETAILS */}
+                                {/* SUB-SECTION 2: STOCK-SPECIFIC GATE EXPLANATIONS */}
                                 <div className="p-3 bg-[#111827] rounded-lg border border-[#334155] space-y-2">
                                   <h4 className="font-bold text-[#a371f7] flex items-center justify-between text-[11px]">
-                                    <span>Apollo Gate Status (5 Binary Filters)</span>
-                                    <span className="text-[10px] text-slate-400">5 / 5 Gates Passed</span>
+                                    <span>{stk.Symbol} — Apollo 5 Gate Inspections</span>
+                                    <span className="text-[10px] text-slate-400">
+                                      {(stk.Gates || []).filter(Boolean).length} / 5 Passed
+                                    </span>
                                   </h4>
-                                  <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                    <div className="flex items-center gap-1.5 p-1 bg-black/30 rounded border border-white/5">
-                                      <CheckCircle2 className="w-3 h-3 text-[#3fb950]" />
-                                      <span>1. Regime: BULLISH</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 p-1 bg-black/30 rounded border border-white/5">
-                                      <CheckCircle2 className="w-3 h-3 text-[#3fb950]" />
-                                      <span>2. Trend: Above 50D SMA</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 p-1 bg-black/30 rounded border border-white/5">
-                                      <CheckCircle2 className="w-3 h-3 text-[#3fb950]" />
-                                      <span>3. Momentum: ADX &gt; 25</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 p-1 bg-black/30 rounded border border-white/5">
-                                      <CheckCircle2 className="w-3 h-3 text-[#3fb950]" />
-                                      <span>4. Volatility: ATR &lt; 4%</span>
-                                    </div>
-                                    <div className="flex items-center justify-between col-span-2 p-1 bg-black/30 rounded border border-white/5">
-                                      <span className="flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-3 h-3 text-[#3fb950]" />
-                                        5. Fundamental Quality (FQS Grade A)
-                                      </span>
-                                      <span className="text-indigo-300 font-bold">PASS</span>
-                                    </div>
+                                  <div className="space-y-1 text-[10px]">
+                                    {(stk.GatesExplanations || [
+                                      '1. Regime Check Passed',
+                                      '2. Trend Filter Passed',
+                                      '3. Momentum Filter Passed',
+                                      '4. Volatility Filter Passed',
+                                      '5. Fundamental Quality Passed'
+                                    ]).map((exp, gIdx) => {
+                                      const passed = (stk.Gates || [true, true, true, true, true])[gIdx];
+                                      return (
+                                        <div key={gIdx} className="flex items-start gap-1.5 p-1 bg-black/30 rounded border border-white/5 text-slate-300">
+                                          {passed ? (
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-[#3fb950] shrink-0 mt-0.5" />
+                                          ) : (
+                                            <XCircle className="w-3.5 h-3.5 text-[#f85149] shrink-0 mt-0.5" />
+                                          )}
+                                          <span className={passed ? 'text-slate-200' : 'text-red-300'}>{exp}</span>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               </div>

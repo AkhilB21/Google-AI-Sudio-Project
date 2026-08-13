@@ -2,16 +2,32 @@ import React, { useState } from 'react';
 import {
   TrendingUp,
   BarChart2,
-  PieChart,
+  PieChart as PieChartIcon,
   ShieldAlert,
   Activity,
   Layers,
   CheckCircle2,
   Award,
-  Sliders
+  Sliders,
+  DollarSign
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart,
+  Bar,
+  Legend
+} from 'recharts';
 import { TradeRecord, SignalStock } from '../../types';
-import { formatCurrencyINR } from '../../utils/calculations';
 
 interface AnalyticsTabProps {
   trades: TradeRecord[];
@@ -27,6 +43,52 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
   const winRate = ((winTrades / totalTrades) * 100).toFixed(1);
   const profitFactor = '2.45';
   const maxDrawdown = '-8.2%';
+
+  // Exit Mode Donut Chart Data
+  const exitModeData = [
+    { name: 'Target Hit', value: 82, color: '#3fb950' },
+    { name: 'Stop Loss', value: 31, color: '#f85149' },
+    { name: 'Time Exit', value: 17, color: '#d29922' },
+    { name: 'Signal Exit', value: 12, color: '#a371f7' },
+  ];
+
+  // Cumulative Equity Curve Data
+  const equityCurveData = Array.from({ length: 24 }).map((_, i) => {
+    const month = `M${i + 1}`;
+    const equity = 1000000 + i * 65000 + Math.sin(i * 0.8) * 80000;
+    const drawdown = i === 7 || i === 15 ? -4.5 : i === 11 ? -8.2 : -2.1;
+    return {
+      month,
+      Equity: Math.round(equity),
+      Drawdown: drawdown,
+    };
+  });
+
+  // Win Rate by Bucket Data
+  const bucketWinRateData = [
+    { bucket: 'L1 (Primary)', winRate: 78.4, trades: 45, color: '#3fb950' },
+    { bucket: 'L2 (Breakout)', winRate: 71.2, trades: 62, color: '#58a6ff' },
+    { bucket: 'L3 (Pullback)', winRate: 64.8, trades: 28, color: '#d29922' },
+    { bucket: 'L4 (Late)', winRate: 48.5, trades: 12, color: '#f85149' },
+  ];
+
+  // MAE / MFE Distribution Histogram Data
+  const maeMfeData = [
+    { range: '0-2%', MAE: 65, MFE: 12 },
+    { range: '2-4%', MAE: 42, MFE: 28 },
+    { range: '4-6%', MAE: 22, MFE: 48 },
+    { range: '6-8%', MAE: 10, MFE: 35 },
+    { range: '8%+', MAE: 3, MFE: 19 },
+  ];
+
+  // Sector breakdown
+  const sectorData = [
+    { sector: 'IT & Tech', count: stocks.filter((s) => s.Symbol.includes('TECH') || s.Symbol.includes('TCS') || s.Symbol.includes('INFY')).length || 18, winRate: 74.5 },
+    { sector: 'Banking & Fin', count: stocks.filter((s) => s.Symbol.includes('BANK') || s.Symbol.includes('HDFC')).length || 24, winRate: 72.0 },
+    { sector: 'Auto & Ancillary', count: 14, winRate: 68.2 },
+    { sector: 'Pharma & Healthcare', count: 12, winRate: 65.4 },
+    { sector: 'Capital Goods', count: 10, winRate: 69.1 },
+  ];
 
   return (
     <div className="p-4 space-y-4 max-w-full overflow-hidden text-slate-200 font-sans">
@@ -64,7 +126,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
       {/* SUB-TAB 1: TRADE ENGINE */}
       {subTab === 'trade_engine' && (
         <div className="space-y-4">
-          {/* 4 AGGREGATE STATCARDS */}
+          {/* 4 AGGREGATE STAT CARDS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl font-mono">
               <span className="text-[10px] uppercase font-bold text-slate-400">Total Backtested Trades</span>
@@ -91,55 +153,55 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
             </div>
           </div>
 
-          {/* EXIT MODE CHART & EQUITY CURVE */}
+          {/* RECHARTS EXIT MODE DONUT & EQUITY CURVE */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 font-mono text-xs">
-            {/* EXIT MODE DONUT CHART DISTRIBUTION */}
-            <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3">
+            {/* EXIT MODE RECHARTS DONUT CHART */}
+            <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3 flex flex-col justify-between">
               <h4 className="font-bold text-white uppercase text-xs flex items-center justify-between">
                 <span>Exit Mode Distribution</span>
                 <span className="text-[10px] text-slate-400">142 Closed Trades</span>
               </h4>
 
-              <div className="space-y-2 pt-2">
-                <div className="flex justify-between items-center p-2 rounded bg-black/30 border border-white/5">
-                  <span className="text-[#3fb950] font-bold">Target Hit</span>
-                  <span className="font-bold text-white">58% (82 trades)</span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded bg-black/30 border border-white/5">
-                  <span className="text-[#f85149] font-bold">Stop Loss Triggered</span>
-                  <span className="font-bold text-white">22% (31 trades)</span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded bg-black/30 border border-white/5">
-                  <span className="text-[#d29922] font-bold">Time-Based Exit</span>
-                  <span className="font-bold text-white">12% (17 trades)</span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded bg-black/30 border border-white/5">
-                  <span className="text-indigo-300 font-bold">Signal Reversal Exit</span>
-                  <span className="font-bold text-white">8% (12 trades)</span>
-                </div>
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={exitModeData} innerRadius={45} outerRadius={65} paddingAngle={4} dataKey="value">
+                      {exitModeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', fontSize: '11px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                {exitModeData.map((em) => (
+                  <div key={em.name} className="flex items-center gap-1.5 p-1 bg-black/30 rounded border border-white/5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: em.color }} />
+                    <span className="text-slate-300 font-bold">{em.name}: {em.value}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* EQUITY CURVE VISUALIZATION */}
+            {/* RECHARTS CUMULATIVE EQUITY CURVE */}
             <div className="lg:col-span-2 p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3 flex flex-col justify-between">
               <div className="flex justify-between items-center">
                 <h4 className="font-bold text-white uppercase text-xs">Portfolio Cumulative Equity Curve &amp; Drawdown</h4>
                 <span className="text-[10px] text-[#3fb950] font-bold">+148.5% Growth</span>
               </div>
 
-              {/* MOCK EQUITY LINE GRAPH */}
-              <div className="h-40 bg-[#0B1120] rounded-lg border border-[#334155] p-3 flex items-end justify-between gap-1">
-                {Array.from({ length: 30 }).map((_, i) => {
-                  const val = 20 + i * 2.2 + Math.sin(i * 0.9) * 12;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                      <div
-                        className="w-full bg-[#3fb950] rounded-t-sm transition-all group-hover:bg-[#58a6ff]"
-                        style={{ height: `${val}%` }}
-                      />
-                    </div>
-                  );
-                })}
+              <div className="h-52 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={equityCurveData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
+                    <XAxis dataKey="month" stroke="#64748b" fontSize={10} />
+                    <YAxis stroke="#64748b" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', fontSize: '11px' }} />
+                    <Area type="monotone" dataKey="Equity" stroke="#3fb950" fill="#3fb95022" strokeWidth={2.5} />
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
 
               <div className="flex justify-between text-[10px] text-slate-400">
@@ -149,10 +211,47 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
             </div>
           </div>
 
-          {/* TRADE LOG TABLE */}
+          {/* BUCKET WIN RATE & MAE/MFE HISTOGRAMS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 font-mono text-xs">
+            {/* WIN RATE BY BUCKET BAR CHART */}
+            <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3">
+              <h4 className="font-bold text-white uppercase text-xs">System Win Rate by LayerSignal Bucket</h4>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={bucketWinRateData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
+                    <XAxis dataKey="bucket" stroke="#64748b" fontSize={10} />
+                    <YAxis domain={[0, 100]} stroke="#64748b" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', fontSize: '11px' }} />
+                    <Bar dataKey="winRate" fill="#58a6ff" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* MAE / MFE HISTOGRAM */}
+            <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3">
+              <h4 className="font-bold text-white uppercase text-xs">MAE vs MFE Adverse/Favorable Excursion Distribution</h4>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={maeMfeData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.4} />
+                    <XAxis dataKey="range" stroke="#64748b" fontSize={10} />
+                    <YAxis stroke="#64748b" fontSize={10} />
+                    <Tooltip contentStyle={{ backgroundColor: '#0B1120', borderColor: '#334155', fontSize: '11px' }} />
+                    <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    <Bar dataKey="MAE" name="Max Adverse (Drawdown)" fill="#f85149" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="MFE" name="Max Favorable (Runup)" fill="#3fb950" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* HISTORICAL TRADE LOG TABLE */}
           <div className="bg-[#111827] border border-[#334155] rounded-xl overflow-hidden font-mono text-xs shadow-xl">
             <div className="p-3 bg-[#1E293B] border-b border-[#334155] font-bold text-white text-xs">
-              Historical Trade Log ({trades.length})
+              Historical Closed Trade Records ({trades.length})
             </div>
 
             <div className="overflow-x-auto">
@@ -246,7 +345,7 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
       {/* SUB-TAB 3: WALK-FORWARD */}
       {subTab === 'walk_forward' && (
         <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl font-mono text-xs space-y-4">
-          <h4 className="font-bold text-white uppercase text-xs">Walk-Forward Validation Engine Results</h4>
+          <h4 className="font-bold text-white uppercase text-xs">Walk-Forward Validation Engine &amp; Sensitivity Heatmap</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-3 bg-black/40 rounded border border-white/5 space-y-1">
               <span className="text-slate-400 text-[10px]">STABILITY SCORE</span>
@@ -264,6 +363,18 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
               <p className="text-[10px] text-slate-500">Resistant to overfitting</p>
             </div>
           </div>
+
+          {/* PARAMETER SENSITIVITY GRID */}
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <h5 className="font-bold text-indigo-300 text-[11px]">Parameter Sensitivity Heatmap (Lookback Days vs RSI Threshold)</h5>
+            <div className="grid grid-cols-5 gap-1.5 text-center text-[10px]">
+              <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">20D / 55 RSI: 74.2%</div>
+              <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">20D / 60 RSI: 78.4%</div>
+              <div className="p-2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">20D / 65 RSI: 76.1%</div>
+              <div className="p-2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">30D / 60 RSI: 71.0%</div>
+              <div className="p-2 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">50D / 60 RSI: 68.5%</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -279,8 +390,8 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
 
       {/* SUB-TAB 5: FUNDAMENTALS */}
       {subTab === 'fundamentals' && (
-        <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl font-mono text-xs space-y-3">
-          <h4 className="font-bold text-white uppercase text-xs">Fundamental Quality Score (FQS A/B/C/D)</h4>
+        <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl font-mono text-xs space-y-4">
+          <h4 className="font-bold text-white uppercase text-xs">Fundamental Quality Score (FQS A/B/C/D) &amp; Sector Breakdown</h4>
           <div className="grid grid-cols-4 gap-3 text-center">
             <div className="p-3 bg-black/40 rounded border border-white/5">
               <span className="text-slate-500 text-[10px] block">GRADE A STOCKS</span>
@@ -297,6 +408,21 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
             <div className="p-3 bg-black/40 rounded border border-white/5">
               <span className="text-slate-500 text-[10px] block">GRADE D STOCKS</span>
               <span className="text-lg font-bold text-red-400">12 Stocks</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h5 className="font-bold text-indigo-300 text-[11px]">Sector Win Rate &amp; Distribution</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {sectorData.map((sec) => (
+                <div key={sec.sector} className="p-3 bg-black/30 rounded-lg border border-white/5 flex justify-between items-center">
+                  <div>
+                    <span className="font-bold text-white block">{sec.sector}</span>
+                    <span className="text-[10px] text-slate-400">{sec.count} Stocks tracked</span>
+                  </div>
+                  <span className="font-extrabold text-[#3fb950]">{sec.winRate}% Win Rate</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

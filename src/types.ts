@@ -34,6 +34,15 @@ export interface SignalStock {
   FQS: 'A' | 'B' | 'C' | 'D';
   Sparkline: number[];
   ThrowbackAlert?: boolean;
+  SubScores?: {
+    trend: number;
+    momentum: number;
+    volatility: number;
+    volume: number;
+    marketFilter: number;
+  };
+  GatesExplanations?: [string, string, string, string, string];
+  HistoricalL3Events?: Array<{ date: string; event: string; price: number; outcomePct: number }>;
 }
 
 export interface SignalsSummary {

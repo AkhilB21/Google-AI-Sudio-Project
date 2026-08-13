@@ -14,6 +14,7 @@ import { AlertsTab } from './components/tabs/AlertsTab';
 import { SystemTab } from './components/tabs/SystemTab';
 
 import { INITIAL_INDICES, INITIAL_ALERTS, INITIAL_TRADES, INITIAL_SYSTEM_HEALTH } from './data/mockData';
+import { enrichStock, computeFunnelAndBuckets } from './utils/enrichment';
 
 export default function App() {
   // Navigation
@@ -44,27 +45,12 @@ export default function App() {
       const json = await res.json();
 
       if (json && json.data) {
-        // Enforce required defaults for missing fields
-        const enriched: SignalStock[] = json.data.map((item: any, idx: number) => ({
-          ...item,
-          Bucket: item.Bucket || (idx % 4 === 0 ? 'L1' : idx % 4 === 1 ? 'L2' : idx % 4 === 2 ? 'L3' : 'L4'),
-          LStage: item.LStage || `Stage-${(idx % 3) + 1}`,
-          ELStatus: item.ELStatus || (idx % 2 === 0 ? 'EL2' : 'EL1'),
-          Conviction: item.Conviction || parseFloat((0.75 + (idx % 25) * 0.01).toFixed(2)),
-          Gates: item.Gates || [true, true, true, idx % 5 !== 0, true],
-          Renko: item.Renko || (idx % 2 === 0 ? 'GREEN' : 'RED'),
-          MCap: item.MCap || (idx % 3 === 0 ? 'Large' : idx % 3 === 1 ? 'Mid' : 'Small'),
-          FQS: item.FQS || (idx % 4 === 0 ? 'A' : idx % 4 === 1 ? 'B' : 'C'),
-          RSI21: item.RSI21 || item.RSI || 62.5,
-          RSI36: item.RSI36 || Math.max(30, (item.RSI || 60) - 4),
-          RSI56: item.RSI56 || Math.max(25, (item.RSI || 60) - 8),
-          ADX: item.ADX || 28.4,
-          ATR_Pct: item.ATR_Pct || 2.1,
-          ThrowbackAlert: idx === 1 || idx === 3,
-        }));
+        // Deterministic, stock-specific enrichment
+        const enriched: SignalStock[] = json.data.map((item: any, idx: number) => enrichStock(item, idx));
+        const computedSummary = computeFunnelAndBuckets(enriched);
 
         setStocks(enriched);
-        setSummary(json.summary);
+        setSummary(computedSummary);
         if (!selectedStock && enriched.length > 0) {
           setSelectedStock(enriched[0]);
         }

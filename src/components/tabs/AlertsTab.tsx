@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Filter, CheckCircle2, ShieldAlert, Zap, Layers } from 'lucide-react';
+import { Bell, Filter, CheckCircle2, ShieldAlert, Zap, Layers, PlusCircle, Trash2, Mail, Smartphone, Send } from 'lucide-react';
 import { AlertItem } from '../../types';
 
 interface AlertsTabProps {
@@ -8,9 +8,60 @@ interface AlertsTabProps {
   onSelectStockBySymbol: (symbol: string) => void;
 }
 
+interface AlertRule {
+  id: string;
+  name: string;
+  condition: string;
+  channel: string;
+  enabled: boolean;
+}
+
 export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onSelectStockBySymbol }) => {
   const [sourceFilter, setSourceFilter] = useState<'All' | 'Apollo' | 'LayerSignal' | 'System'>('All');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Entry' | 'Exit' | 'Regime' | 'Scoring' | 'System'>('All');
+
+  // Channels state
+  const [channels, setChannels] = useState({
+    email: true,
+    push: true,
+    telegram: false,
+    webhook: false,
+  });
+
+  // Custom Alert Rules state
+  const [rules, setRules] = useState<AlertRule[]>([
+    { id: 'r1', name: 'L1 Breakout Alert', condition: 'Stock enters L1 Bucket && RSI21 > 60', channel: 'Push, Email', enabled: true },
+    { id: 'r2', name: 'Throwback Pattern Alert', condition: 'Stock in L2 Bucket && Price pullback <= 2%', channel: 'Push', enabled: true },
+    { id: 'r3', name: 'Market Regime Shift', condition: 'Nifty Index crosses 50D SMA', channel: 'Email, Telegram', enabled: true },
+  ]);
+
+  const [newRuleName, setNewRuleName] = useState('');
+  const [newRuleCond, setNewRuleCond] = useState('');
+
+  const handleAddRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRuleName.trim() || !newRuleCond.trim()) return;
+    setRules((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        name: newRuleName.trim(),
+        condition: newRuleCond.trim(),
+        channel: 'Push',
+        enabled: true,
+      },
+    ]);
+    setNewRuleName('');
+    setNewRuleCond('');
+  };
+
+  const toggleRule = (id: string) => {
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
+  };
+
+  const deleteRule = (id: string) => {
+    setRules((prev) => prev.filter((r) => r.id !== id));
+  };
 
   const filteredAlerts = alerts.filter((a) => {
     if (sourceFilter !== 'All' && a.source !== sourceFilter) return false;
@@ -20,6 +71,108 @@ export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onS
 
   return (
     <div className="p-4 space-y-4 max-w-full overflow-hidden text-slate-200 font-sans">
+      {/* DELIVERY CHANNEL TOGGLES & RULE ENGINE */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
+        {/* CHANNELS PANEL */}
+        <div className="p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3 shadow-lg">
+          <h4 className="font-extrabold text-white uppercase text-xs border-b border-white/10 pb-2 flex items-center justify-between">
+            <span>Notification Delivery Channels</span>
+            <Bell className="w-4 h-4 text-indigo-400" />
+          </h4>
+
+          <div className="space-y-2">
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded border border-white/5">
+              <span className="flex items-center gap-2 text-slate-300">
+                <Mail className="w-3.5 h-3.5 text-blue-400" /> Email Notifications
+              </span>
+              <input
+                type="checkbox"
+                checked={channels.email}
+                onChange={(e) => setChannels({ ...channels, email: e.target.checked })}
+                className="accent-indigo-500 cursor-pointer"
+              />
+            </div>
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded border border-white/5">
+              <span className="flex items-center gap-2 text-slate-300">
+                <Smartphone className="w-3.5 h-3.5 text-emerald-400" /> Browser Push
+              </span>
+              <input
+                type="checkbox"
+                checked={channels.push}
+                onChange={(e) => setChannels({ ...channels, push: e.target.checked })}
+                className="accent-indigo-500 cursor-pointer"
+              />
+            </div>
+            <div className="flex justify-between items-center p-2 bg-black/30 rounded border border-white/5">
+              <span className="flex items-center gap-2 text-slate-300">
+                <Send className="w-3.5 h-3.5 text-sky-400" /> Telegram Bot Integration
+              </span>
+              <input
+                type="checkbox"
+                checked={channels.telegram}
+                onChange={(e) => setChannels({ ...channels, telegram: e.target.checked })}
+                className="accent-indigo-500 cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ACTIVE ALERT RULES TABLE */}
+        <div className="md:col-span-2 p-4 bg-[#111827] border border-[#334155] rounded-xl space-y-3 shadow-lg flex flex-col justify-between">
+          <h4 className="font-extrabold text-white uppercase text-xs border-b border-white/10 pb-2 flex items-center justify-between">
+            <span>Active Trigger Rules ({rules.length})</span>
+            <span className="text-[10px] text-indigo-300">Real-time Rule Evaluator</span>
+          </h4>
+
+          <div className="space-y-1.5 overflow-y-auto max-h-36 pr-1">
+            {rules.map((r) => (
+              <div key={r.id} className="p-2 bg-black/40 rounded border border-white/5 flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-bold text-white flex items-center gap-2">
+                    <span>{r.name}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({r.condition})</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleRule(r.id)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                      r.enabled ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'
+                    }`}
+                  >
+                    {r.enabled ? 'ACTIVE' : 'MUTED'}
+                  </button>
+                  <button onClick={() => deleteRule(r.id)} className="text-slate-500 hover:text-red-400 cursor-pointer p-1">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <form onSubmit={handleAddRule} className="flex gap-2 pt-2 border-t border-white/10">
+            <input
+              type="text"
+              placeholder="Rule Name"
+              value={newRuleName}
+              onChange={(e) => setNewRuleName(e.target.value)}
+              className="w-1/3 bg-[#0B1120] border border-[#334155] rounded p-1.5 text-xs text-white"
+            />
+            <input
+              type="text"
+              placeholder="Trigger Condition (e.g., RSI21 > 75)"
+              value={newRuleCond}
+              onChange={(e) => setNewRuleCond(e.target.value)}
+              className="flex-1 bg-[#0B1120] border border-[#334155] rounded p-1.5 text-xs text-white"
+            />
+            <button type="submit" className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded font-bold text-white text-xs cursor-pointer">
+              Add
+            </button>
+          </form>
+        </div>
+      </div>
+
       {/* FILTER BAR */}
       <div className="p-3 bg-[#111827] border border-[#334155] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs shadow-md">
         <div className="flex flex-wrap items-center gap-3">
