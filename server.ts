@@ -175,19 +175,27 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
 
     const hash = hashCode(symbol);
 
+    const csvRsi21 = getValNum(["RSI21", "RSI 21", "RSI_21"], 0);
+    const csvRsi36 = getValNum(["RSI36", "RSI 36", "RSI_36"], 0);
+    const csvRsi56 = getValNum(["RSI56", "RSI 56", "RSI_56"], 0);
+    const csvAdx = getValNum(["ADX", "ADX14", "ADX 14"], 0);
+    const csvAtrPct = getValNum(["ATR_Pct", "ATR %", "ATR_PCT", "ATR"], 0);
+
     // DETERMINISTIC CALCULATIONS (Zero hardcoded idx % N)
-    const rsi21 = parseFloat(Math.min(92, Math.max(18, baseRsi || (50 + (cmp > sma20 ? 8 : -8)))).toFixed(1));
-    const rsi36 = parseFloat(Math.min(88, Math.max(22, rsi21 * 0.92 + (cmp > sma50 ? 4 : -4))).toFixed(1));
-    const rsi56 = parseFloat(Math.min(84, Math.max(25, rsi36 * 0.88 + (cmp > sma200 ? 5 : -3))).toFixed(1));
+    const rsi21 = csvRsi21 > 0 ? csvRsi21 : parseFloat(Math.min(92, Math.max(18, baseRsi || (50 + (cmp > sma20 ? 8 : -8)))).toFixed(1));
+    const rsi36 = csvRsi36 > 0 ? csvRsi36 : parseFloat(Math.min(88, Math.max(22, rsi21 * 0.92 + (cmp > sma50 ? 4 : -4))).toFixed(1));
+    const rsi56 = csvRsi56 > 0 ? csvRsi56 : parseFloat(Math.min(84, Math.max(25, rsi36 * 0.88 + (cmp > sma200 ? 5 : -3))).toFixed(1));
 
-    const adx = parseFloat(Math.min(65, Math.max(12, 18 + Math.abs(pctChange) * 1.4 + Math.abs((cmp / (sma20 || 1) - 1) * 100))).toFixed(1));
+    const adx = csvAdx > 0 ? csvAdx : parseFloat(Math.min(65, Math.max(12, 18 + Math.abs(pctChange) * 1.4 + Math.abs((cmp / (sma20 || 1) - 1) * 100))).toFixed(1));
 
-    let atrPct = 2.0;
-    if (high > 0 && low > 0 && cmp > 0) {
-      atrPct = parseFloat((((high - low) / cmp) * 100).toFixed(1));
-    }
-    if (atrPct <= 0.4 || atrPct > 15) {
-      atrPct = parseFloat((1.2 + Math.abs(pctChange) * 0.6 + (hash % 15) * 0.1).toFixed(1));
+    let atrPct = csvAtrPct > 0 ? csvAtrPct : 2.0;
+    if (csvAtrPct <= 0) {
+      if (high > 0 && low > 0 && cmp > 0) {
+        atrPct = parseFloat((((high - low) / cmp) * 100).toFixed(1));
+      }
+      if (atrPct <= 0.4 || atrPct > 15) {
+        atrPct = parseFloat((1.2 + Math.abs(pctChange) * 0.6 + (hash % 15) * 0.1).toFixed(1));
+      }
     }
 
     // REAL 5 GATES ENGINE
