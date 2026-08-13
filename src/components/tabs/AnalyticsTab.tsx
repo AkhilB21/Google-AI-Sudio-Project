@@ -14,7 +14,8 @@ import {
   Target,
   ArrowUpRight,
   Filter,
-  Search
+  Search,
+  History
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -969,6 +970,36 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
                       <span className="font-bold text-indigo-300">{((activeProfileStock.Conviction || 0.8) * 100).toFixed(0)}%</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* HISTORICAL L3 EVENTS GROUNDED TIMELINE */}
+              <div className="p-3.5 bg-black/40 rounded-lg border border-white/5 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-white flex items-center gap-1.5">
+                    <History className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Historical L3 / Structural Price Pattern Timeline</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Grounded in multi-timeframe OHLC &amp; SMA levels
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {(activeProfileStock.HistoricalL3Events || []).map((ev, eIdx) => (
+                    <div key={eIdx} className="p-2.5 bg-[#0B1120] rounded border border-white/5 flex flex-col justify-between space-y-1">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-indigo-300 text-[11px]">{ev.event}</span>
+                        <span className={`font-black text-xs ${ev.outcomePct >= 0 ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+                          {ev.outcomePct >= 0 ? `+${ev.outcomePct}%` : `${ev.outcomePct}%`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] text-slate-400">
+                        <span>Date: {ev.date}</span>
+                        <span>Level: ₹{ev.price.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

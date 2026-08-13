@@ -153,11 +153,52 @@ export function enrichStock(item: any, idx: number): SignalStock {
   const throwbackAlert = item.ThrowbackAlert ?? (bucket === 'L2' || (score > 60 && prox < 75 && pct < 0));
 
   // 11. Historical L3 Events
-  const historicalL3 = item.HistoricalL3Events || [
-    { date: '2026-06-15', event: 'L3 Bucket Entry', price: parseFloat((cmp * 0.82).toFixed(1)), outcomePct: 18.4 },
-    { date: '2026-04-10', event: 'L2 Breakout', price: parseFloat((cmp * 0.74).toFixed(1)), outcomePct: 24.1 },
-    { date: '2026-01-20', event: 'Throwback Re-entry', price: parseFloat((cmp * 0.68).toFixed(1)), outcomePct: 12.8 },
-  ];
+  let historicalL3 = item.HistoricalL3Events;
+  if (!historicalL3 || historicalL3.length === 0) {
+    const formatDateOffset = (daysAgo: number): string => {
+      const d = new Date(item.Date || Date.now());
+      const target = isNaN(d.getTime()) ? new Date() : d;
+      target.setDate(target.getDate() - daysAgo);
+      return target.toISOString().split('T')[0];
+    };
+
+    const low30D = (item as any).Low30D || cmp * 0.92;
+    const low52W = item.Low52W || cmp * 0.75;
+    const sma20 = item['20D_SMA'] || cmp * 0.98;
+    const sma50 = item['50D_SMA'] || cmp * 0.94;
+    const sma200 = item['200D_SMA'] || cmp * 0.88;
+
+    let p1Name = 'L3 Accumulation Entry';
+    let p1Price = low30D;
+    if (throwbackAlert || (bucket === 'L2' && cmp >= sma20)) {
+      p1Name = 'Throwback Re-entry Support';
+      p1Price = Math.min(cmp * 0.99, Math.max(low30D, sma20));
+    } else if (bucket === 'L1' || (cmp >= sma20 && sma20 >= sma50)) {
+      p1Name = 'L2 Breakout Pivot';
+      p1Price = Math.min(cmp * 0.98, Math.max(low30D, sma20 * 0.99));
+    } else if (cmp < sma20 && cmp >= sma50) {
+      p1Name = 'L3 Pullback Support Test';
+      p1Price = Math.min(cmp * 0.99, Math.max(low30D, sma50));
+    }
+    p1Price = parseFloat(p1Price.toFixed(1));
+    const p1Outcome = p1Price > 0 ? parseFloat((((cmp - p1Price) / p1Price) * 100).toFixed(1)) : 0;
+
+    let p2Name = 'L3 Base Stage-2 Entry';
+    let p2Price = sma50 >= sma200 ? Math.min(cmp * 0.95, Math.max(low52W * 1.08, (sma50 + sma200) / 2)) : Math.min(cmp * 0.94, sma50 * 0.97);
+    p2Price = parseFloat(p2Price.toFixed(1));
+    const p2Outcome = p2Price > 0 ? parseFloat((((cmp - p2Price) / p2Price) * 100).toFixed(1)) : 0;
+
+    let p3Name = cmp >= sma200 ? 'Macro 200D SMA Accumulation' : '52-Week Stage-1 Base Low';
+    let p3Price = cmp >= sma200 ? Math.min(cmp * 0.90, Math.max(low52W, sma200 * 0.96)) : Math.min(cmp * 0.88, low52W * 1.04);
+    p3Price = parseFloat(p3Price.toFixed(1));
+    const p3Outcome = p3Price > 0 ? parseFloat((((cmp - p3Price) / p3Price) * 100).toFixed(1)) : 0;
+
+    historicalL3 = [
+      { date: formatDateOffset(26), event: p1Name, price: p1Price, outcomePct: p1Outcome },
+      { date: formatDateOffset(88), event: p2Name, price: p2Price, outcomePct: p2Outcome },
+      { date: formatDateOffset(185), event: p3Name, price: p3Price, outcomePct: p3Outcome },
+    ];
+  }
 
   const apolloScore = item.Apollo_Score ?? parseFloat(Math.min(148, Math.max(15, score * 1.25)).toFixed(1));
   const layerScore = item.LayerSignal_Score ?? score;

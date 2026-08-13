@@ -745,16 +745,15 @@ export const WatchlistTab: React.FC<WatchlistTabProps> = ({
 
               {openAccordions[9] && (
                 <div className="p-3 text-xs text-slate-300 border-t border-white/5 space-y-2">
-                  {(currentStock.HistoricalL3Events || [
-                    { date: '2026-06-15', event: 'L3 Bucket Entry', price: currentStock.CMP * 0.85, outcomePct: 18.2 },
-                    { date: '2026-03-10', event: 'L2 Breakout', price: currentStock.CMP * 0.75, outcomePct: 22.4 },
-                  ]).map((ev, eIdx) => (
+                  {(currentStock.HistoricalL3Events || []).map((ev, eIdx) => (
                     <div key={eIdx} className="p-2 bg-black/30 rounded border border-white/5 flex justify-between items-center">
                       <div>
                         <span className="font-bold text-indigo-300 block">{ev.event} ({ev.date})</span>
                         <span className="text-[10px] text-slate-400">Entry Price: ₹{ev.price.toFixed(1)}</span>
                       </div>
-                      <span className="font-extrabold text-[#3fb950] text-xs">+{ev.outcomePct}%</span>
+                      <span className={`font-extrabold text-xs ${ev.outcomePct >= 0 ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+                        {ev.outcomePct >= 0 ? `+${ev.outcomePct}%` : `${ev.outcomePct}%`}
+                      </span>
                     </div>
                   ))}
                 </div>
