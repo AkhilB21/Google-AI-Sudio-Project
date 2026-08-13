@@ -13,7 +13,7 @@ import { GuidanceTab } from './components/tabs/GuidanceTab';
 import { AlertsTab } from './components/tabs/AlertsTab';
 import { SystemTab } from './components/tabs/SystemTab';
 
-import { INITIAL_INDICES, INITIAL_ALERTS, INITIAL_TRADES, INITIAL_SYSTEM_HEALTH } from './data/mockData';
+import { INITIAL_INDICES } from './data/mockData';
 import { enrichStock, computeFunnelAndBuckets } from './utils/enrichment';
 
 export default function App() {
@@ -29,19 +29,22 @@ export default function App() {
   // Selected Stock across Screener / Watchlist
   const [selectedStock, setSelectedStock] = useState<SignalStock | null>(null);
 
-  // Secondary Data Feeds
+  // Secondary Feeds sourced directly from SQLite Database
   const [indices] = useState<MarketIndex[]>(INITIAL_INDICES);
-  const [alerts, setAlerts] = useState<AlertItem[]>(INITIAL_ALERTS);
-  const [trades] = useState<TradeRecord[]>(INITIAL_TRADES);
-  const [systemHealth] = useState<SystemHealthData>(INITIAL_SYSTEM_HEALTH);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [systemHealth, setSystemHealth] = useState<SystemHealthData | null>(null);
+  const [wsConnected, setWsConnected] = useState<boolean>(false);
 
   const unreadAlertsCount = alerts.filter((a) => !a.read).length;
 
-  // Fetch Signals API from Backend
-  const fetchSignals = async () => {
+  // 1. Fetch Signals API from Backend (Google Sheet / Local CSV Backup)
+  const fetchSignals = async (forceSync = false) => {
     try {
       setIsRefreshing(true);
-      const res = await fetch('/api/signals');
+      const url = forceSync ? '/api/signals/sync' : '/api/signals';
+      const method = forceSync ? 'POST' : 'GET';
+      const res = await fetch(url, { method });
       const json = await res.json();
 
       if (json && json.data) {
@@ -63,8 +66,74 @@ export default function App() {
     }
   };
 
+  // 2. Load SQLite Database Records (Trades, Alerts, System Health)
+  const loadDbRecords = async () => {
+    try {
+      const [tradesRes, alertsRes, healthRes] = await Promise.all([
+        fetch('/api/db/trades'),
+        fetch('/api/db/alerts'),
+        fetch('/api/system/health'),
+      ]);
+
+      if (tradesRes.ok) {
+        const tradesData = await tradesRes.json();
+        if (Array.isArray(tradesData)) setTrades(tradesData);
+      }
+
+      if (alertsRes.ok) {
+        const alertsData = await alertsRes.json();
+        if (Array.isArray(alertsData)) setAlerts(alertsData);
+      }
+
+      if (healthRes.ok) {
+        const healthData = await healthRes.json();
+        if (healthData) setSystemHealth(healthData);
+      }
+    } catch (err) {
+      console.error('Failed to load SQLite records:', err);
+    }
+  };
+
+  // 3. Connect to WebSocket Live Streaming Server
   useEffect(() => {
     fetchSignals();
+    loadDbRecords();
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+    let ws: WebSocket | null = null;
+
+    try {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setWsConnected(true);
+        ws?.send(JSON.stringify({ type: 'PING' }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'LIVE_PULSE' || msg.type === 'CACHE_REFRESH') {
+            loadDbRecords();
+          }
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    } catch (e) {
+      console.warn('WebSocket connection not available:', e);
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleSelectStock = (stk: SignalStock) => {
@@ -80,8 +149,13 @@ export default function App() {
     setActiveTab('watchlist');
   };
 
-  const handleMarkAllAlertsRead = () => {
-    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+  const handleMarkAllAlertsRead = async () => {
+    try {
+      await fetch('/api/db/alerts/mark-read', { method: 'POST' });
+      setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
+    } catch (err) {
+      console.error('Failed to mark alerts as read:', err);
+    }
   };
 
   return (
@@ -92,7 +166,7 @@ export default function App() {
         unreadAlertsCount={unreadAlertsCount}
         onSelectStockFromSearch={handleSelectStock}
         onOpenAlertsTab={() => setActiveTab('alerts')}
-        onRefreshData={fetchSignals}
+        onRefreshData={() => fetchSignals(true)}
         isRefreshing={isRefreshing}
       />
 
@@ -129,7 +203,9 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'system' && <SystemTab health={systemHealth} />}
+        {activeTab === 'system' && (
+          <SystemTab health={systemHealth || undefined} />
+        )}
       </div>
 
       {/* TICKER FOOTER */}

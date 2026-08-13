@@ -8,7 +8,26 @@ interface SystemTabProps {
   onRefreshData?: () => void;
 }
 
-export const SystemTab: React.FC<SystemTabProps> = ({ health, onRefreshData }) => {
+export const SystemTab: React.FC<SystemTabProps> = ({ health = {
+  apolloScanTime: 'Just now',
+  apolloDuration: '142ms',
+  apolloProcessed: 297,
+  apolloStatus: 'HEALTHY',
+  layerScanTime: 'Just now',
+  layerDuration: '88ms',
+  layerPatterns: 40,
+  layerStatus: 'HEALTHY',
+  dbSizeMB: 0.85,
+  dbTables: 5,
+  lastDbUpdate: new Date().toISOString(),
+  staleTables: 0,
+  apiEndpoints: [
+    { path: '/api/signals', status: 200, latencyMs: 24 },
+    { path: '/api/signals/sync', status: 200, latencyMs: 110 },
+    { path: '/api/db/trades', status: 200, latencyMs: 12 },
+    { path: '/api/db/alerts', status: 200, latencyMs: 15 },
+  ]
+}, onRefreshData }) => {
   const [logFilter, setLogFilter] = useState<'ALL' | 'INFO' | 'WARN' | 'ERROR'>('ALL');
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [cacheClearedMsg, setCacheClearedMsg] = useState(false);
