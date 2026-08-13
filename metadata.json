@@ -1,0 +1,6 @@
+{
+  "name": "System Engine Dashboard",
+  "description": "An immersive system overview dashboard built with the Immersive UI theme.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
