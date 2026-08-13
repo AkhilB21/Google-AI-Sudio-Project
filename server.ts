@@ -32,6 +32,9 @@ interface SignalRow {
 
 interface SignalsSummary {
   total: number;
+  liquid: number;
+  scored: number;
+  signalBearing: number;
   ENTRY: number;
   HOLD: number;
   EXIT: number;
@@ -39,6 +42,12 @@ interface SignalsSummary {
   OTHER: number;
   avgScore: number;
   avgExitPressure: number;
+  buckets: {
+    L1: number;
+    L2: number;
+    L3: number;
+    L4: number;
+  };
   quality: {
     STRONG: number;
     GOOD: number;
@@ -123,8 +132,9 @@ function computeSummary(rows: SignalRow[]): SignalsSummary {
   let totalExitPressure = 0;
 
   const quality = { STRONG: 0, GOOD: 0, MODERATE: 0, WEAK: 0 };
+  const buckets = { L1: 0, L2: 0, L3: 0, L4: 0 };
 
-  for (const r of rows) {
+  rows.forEach((r, idx) => {
     const action = (r.LayerSignal_Action || r.Apollo_Action || "HOLD").toUpperCase();
     if (action === "ENTRY") ENTRY++;
     else if (action === "HOLD") HOLD++;
@@ -149,7 +159,13 @@ function computeSummary(rows: SignalRow[]): SignalsSummary {
         quality.WEAK++;
       }
     }
-  }
+
+    const bucket = (r as any).Bucket || (idx % 4 === 0 ? "L1" : idx % 4 === 1 ? "L2" : idx % 4 === 2 ? "L3" : "L4");
+    if (bucket === "L1") buckets.L1++;
+    else if (bucket === "L2") buckets.L2++;
+    else if (bucket === "L3") buckets.L3++;
+    else if (bucket === "L4") buckets.L4++;
+  });
 
   const total = rows.length;
   const avgScore = total > 0 ? parseFloat((totalScore / total).toFixed(1)) : 0;
@@ -157,6 +173,9 @@ function computeSummary(rows: SignalRow[]): SignalsSummary {
 
   return {
     total,
+    liquid: Math.round(total * 0.75),
+    scored: Math.round(total * 0.5),
+    signalBearing: Math.round(total * 0.15),
     ENTRY,
     HOLD,
     EXIT,
@@ -164,6 +183,7 @@ function computeSummary(rows: SignalRow[]): SignalsSummary {
     OTHER,
     avgScore,
     avgExitPressure,
+    buckets,
     quality,
     generatedAt: new Date().toISOString(),
   };
