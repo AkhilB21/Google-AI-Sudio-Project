@@ -231,18 +231,18 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
                     </td>
                   </tr>
                 ) : (
-                  filteredMatches.map((stk) => {
+                  filteredMatches.map((stk, idx) => {
                     const matchPercent = computeMatchScore(stk, selectedPreset);
                     return (
                       <tr
-                        key={stk.Symbol}
+                        key={`${stk.Symbol}-${idx}`}
                         onClick={() => onSelectStock(stk)}
                         className="hover:bg-white/5 transition-colors cursor-pointer group"
                       >
                         <td className="p-3 font-bold text-white flex items-center gap-1.5">
                           <span>{stk.Symbol}</span>
                         </td>
-                        <td className="p-3 font-bold text-white">₹{stk.CMP || stk.Close}</td>
+                        <td className="p-3 font-bold text-white">₹{stk.CMP ?? stk.Close ?? 0}</td>
                         <td className="p-3">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
@@ -256,12 +256,12 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
                             {stk.Bucket}
                           </span>
                         </td>
-                        <td className="p-3 font-extrabold text-indigo-300">{stk.LayerSignal_Score?.toFixed(0)}</td>
-                        <td className="p-3 font-bold text-[#3fb950]">{stk.RSI21?.toFixed(1) || '64.2'}</td>
-                        <td className="p-3 font-bold text-[#58a6ff]">{stk.RSI36?.toFixed(1) || '58.4'}</td>
-                        <td className="p-3 text-slate-300">{stk.ADX?.toFixed(1) || '28.5'}</td>
-                        <td className="p-3 text-slate-300">{stk.ATR_Pct?.toFixed(1) || '2.1'}%</td>
-                        <td className="p-3 font-semibold text-indigo-400">{stk['52W_Prox']?.toFixed(1)}%</td>
+                        <td className="p-3 font-extrabold text-indigo-300">{stk.LayerSignal_Score?.toFixed(0) ?? '0'}</td>
+                        <td className="p-3 font-bold text-[#3fb950]">{stk.RSI21?.toFixed(1) ?? '64.2'}</td>
+                        <td className="p-3 font-bold text-[#58a6ff]">{stk.RSI36?.toFixed(1) ?? '58.4'}</td>
+                        <td className="p-3 text-slate-300">{stk.ADX?.toFixed(1) ?? '28.5'}</td>
+                        <td className="p-3 text-slate-300">{stk.ATR_Pct?.toFixed(1) ?? '2.1'}%</td>
+                        <td className="p-3 font-semibold text-indigo-400">{stk['52W_Prox']?.toFixed(1) ?? '0.0'}%</td>
                         <td className="p-3">
                           <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold rounded text-[10px] border border-emerald-500/30">
                             {matchPercent}% Match

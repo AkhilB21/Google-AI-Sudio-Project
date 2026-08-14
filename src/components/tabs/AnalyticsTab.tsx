@@ -873,8 +873,8 @@ export const AnalyticsTab: React.FC<AnalyticsTabProps> = ({ trades, stocks }) =>
                 onChange={(e) => setSelectedProfileSymbol(e.target.value)}
                 className="bg-[#0B1120] border border-[#334155] rounded-lg px-3 py-1.5 text-white font-bold text-xs focus:outline-none focus:border-indigo-500"
               >
-                {stocks.map((s) => (
-                  <option key={s.Symbol} value={s.Symbol}>
+                {stocks.map((s, idx) => (
+                  <option key={`${s.Symbol}-${idx}`} value={s.Symbol}>
                     {s.Symbol} (Apollo: {s.Apollo_Score} | Layer: {s.LayerSignal_Score})
                   </option>
                 ))}

@@ -46,7 +46,7 @@ export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onS
           setRules(data);
         }
       })
-      .catch((err) => console.error('Failed to load rules:', err));
+      .catch((err) => console.warn('Could not sync alert rules from DB:', err));
   }, []);
 
   const handleAddRule = async (e: React.FormEvent) => {
@@ -83,8 +83,20 @@ export const AlertsTab: React.FC<AlertsTabProps> = ({ alerts, onMarkAllRead, onS
     }
   };
 
-  const toggleRule = (id: string) => {
-    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
+  const toggleRule = async (id: string) => {
+    const target = rules.find((r) => r.id === id);
+    if (!target) return;
+    const newEnabled = !target.enabled;
+    setRules((prev) => prev.map((r) => (r.id === id ? { ...r, enabled: newEnabled } : r)));
+    try {
+      await fetch(`/api/db/rules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newEnabled }),
+      });
+    } catch (err) {
+      console.warn('Failed to persist rule toggle:', err);
+    }
   };
 
   const deleteRule = async (id: string) => {

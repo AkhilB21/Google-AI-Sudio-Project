@@ -394,7 +394,7 @@ export const ScreenerTab: React.FC<ScreenerTabProps> = ({ stocks, summary, onSel
                     const isExpanded = expandedSymbol === stk.Symbol;
 
                     return (
-                      <React.Fragment key={stk.Symbol}>
+                      <React.Fragment key={`${stk.Symbol}-${idx}`}>
                         <tr
                           onClick={() => onSelectStock(stk)}
                           className={`hover:bg-white/5 transition-colors cursor-pointer ${

@@ -89,7 +89,7 @@ export const WatchlistTab: React.FC<WatchlistTabProps> = ({
           setJournalEntries(data);
         }
       })
-      .catch((err) => console.error('Failed to load journal entries:', err));
+      .catch((err) => console.warn('Could not sync journal from DB:', err));
   }, []);
 
   const [newNote, setNewNote] = useState('');
@@ -212,12 +212,12 @@ export const WatchlistTab: React.FC<WatchlistTabProps> = ({
 
         {/* SCROLLABLE STOCK LIST */}
         <div className="flex-1 overflow-y-auto divide-y divide-white/5 font-mono text-xs">
-          {filteredStockList.map((stk) => {
+          {filteredStockList.map((stk, idx) => {
             const isSelected = stk.Symbol === currentStock.Symbol;
 
             return (
               <div
-                key={stk.Symbol}
+                key={`${stk.Symbol}-${idx}`}
                 onClick={() => onSelectStock(stk)}
                 className={`p-3 hover:bg-white/5 cursor-pointer transition-all flex items-center justify-between ${
                   isSelected ? 'bg-indigo-950/40 border-l-4 border-[#58a6ff]' : ''

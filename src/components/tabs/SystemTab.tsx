@@ -55,7 +55,7 @@ export const SystemTab: React.FC<SystemTabProps> = ({
           setLiveLogs((prev) => [...prev, ...dbLogs.slice(0, 10)]);
         }
       })
-      .catch((err) => console.error('Failed to load system logs:', err));
+      .catch((err) => console.warn('Could not load system alert logs from DB:', err));
   }, []);
 
   const filteredLogs = liveLogs.filter((l) => logFilter === 'ALL' || l.level === logFilter);

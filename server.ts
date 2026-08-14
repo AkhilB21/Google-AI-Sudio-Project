@@ -108,6 +108,7 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
 
   const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
   const rows: SignalRow[] = [];
+  const seenSymbols = new Set<string>();
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -149,7 +150,9 @@ function parseAndEnrichCsv(csvText: string, dataSourceName = "Google Sheet"): Si
 
     let rawSymbol = getValStr(["Ticker", "Symbol", "Stock"]);
     if (!rawSymbol) continue;
-    const symbol = rawSymbol.replace(/^NSE:/i, "").trim();
+    const symbol = rawSymbol.replace(/^NSE:/i, "").trim().toUpperCase();
+    if (!symbol || seenSymbols.has(symbol)) continue;
+    seenSymbols.add(symbol);
 
     const open = getValNum(["Open"], 0);
     const high = getValNum(["high", "High"], 0);
@@ -493,7 +496,7 @@ function computeSummary(rows: SignalRow[], sourceName: string): SignalsSummary {
       const ep = r.Exit_Pressure || 0;
       if (score >= 80 && ep < 35) quality.STRONG++;
       else if (score >= 68 && ep < 50) quality.GOOD++;
-      else if (score >= 50) quality.MODERATE++;
+      else if (score >= 50 && ep < 65) quality.MODERATE++;
       else quality.WEAK++;
     }
   });
@@ -590,6 +593,17 @@ async function startServer() {
   const db = await getDb();
 
   app.use(express.json());
+
+  // Permissive CORS and API caching headers
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
   // WEBSOCKET SERVER SETUP
   const wss = new WebSocketServer({ server, path: "/ws" });
@@ -792,6 +806,20 @@ async function startServer() {
       stmt.run([id, name, condition, channel]);
       saveDb();
       res.json({ success: true, id });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/db/rules/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const { enabled } = req.body;
+      const val = enabled ? 1 : 0;
+      const stmt = db.prepare("UPDATE alert_rules SET enabled = ? WHERE id = ?");
+      stmt.run([val, id]);
+      saveDb();
+      res.json({ success: true, id, enabled: Boolean(enabled) });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

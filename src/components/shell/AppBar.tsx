@@ -77,9 +77,9 @@ export const AppBar: React.FC<AppBarProps> = ({
           {/* SEARCH AUTOCOMPLETE DROPDOWN */}
           {isSearchFocused && searchResults.length > 0 && (
             <div className="absolute top-8 left-0 w-full bg-[#111827] border border-[#334155] rounded-lg shadow-2xl z-50 overflow-hidden font-mono text-xs divide-y divide-white/5">
-              {searchResults.map((stk) => (
+              {searchResults.map((stk, idx) => (
                 <div
-                  key={stk.Symbol}
+                  key={`${stk.Symbol}-${idx}`}
                   onClick={() => {
                     onSelectStockFromSearch(stk);
                     setSearchQuery('');

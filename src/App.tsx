@@ -45,11 +45,21 @@ export default function App() {
       const url = forceSync ? '/api/signals/sync' : '/api/signals';
       const method = forceSync ? 'POST' : 'GET';
       const res = await fetch(url, { method });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
 
-      if (json && json.data) {
+      if (json && json.data && Array.isArray(json.data) && json.data.length > 0) {
+        // Deduplicate records by Symbol
+        const seenSymbols = new Set<string>();
+        const uniqueData = json.data.filter((item: any) => {
+          const sym = (item.Symbol || item.Ticker || '').toString().trim().toUpperCase();
+          if (!sym || seenSymbols.has(sym)) return false;
+          seenSymbols.add(sym);
+          return true;
+        });
+
         // Deterministic, stock-specific enrichment
-        const enriched: SignalStock[] = json.data.map((item: any, idx: number) => enrichStock(item, idx));
+        const enriched: SignalStock[] = uniqueData.map((item: any, idx: number) => enrichStock(item, idx));
         const computedSummary = computeFunnelAndBuckets(enriched);
 
         setStocks(enriched);
@@ -59,7 +69,7 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch signals:', err);
+      console.warn('Backend signals fetch deferred:', err);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -69,28 +79,28 @@ export default function App() {
   // 2. Load SQLite Database Records (Trades, Alerts, System Health)
   const loadDbRecords = async () => {
     try {
-      const [tradesRes, alertsRes, healthRes] = await Promise.all([
+      const [tradesRes, alertsRes, healthRes] = await Promise.allSettled([
         fetch('/api/db/trades'),
         fetch('/api/db/alerts'),
         fetch('/api/system/health'),
       ]);
 
-      if (tradesRes.ok) {
-        const tradesData = await tradesRes.json();
-        if (Array.isArray(tradesData)) setTrades(tradesData);
+      if (tradesRes.status === 'fulfilled' && tradesRes.value.ok) {
+        const tradesData = await tradesRes.value.json();
+        if (Array.isArray(tradesData) && tradesData.length > 0) setTrades(tradesData);
       }
 
-      if (alertsRes.ok) {
-        const alertsData = await alertsRes.json();
-        if (Array.isArray(alertsData)) setAlerts(alertsData);
+      if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
+        const alertsData = await alertsRes.value.json();
+        if (Array.isArray(alertsData) && alertsData.length > 0) setAlerts(alertsData);
       }
 
-      if (healthRes.ok) {
-        const healthData = await healthRes.json();
-        if (healthData) setSystemHealth(healthData);
+      if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+        const healthData = await healthRes.value.json();
+        if (healthData && healthData.apolloStatus) setSystemHealth(healthData);
       }
     } catch (err) {
-      console.error('Failed to load SQLite records:', err);
+      console.warn('SQLite records sync deferred:', err);
     }
   };
 

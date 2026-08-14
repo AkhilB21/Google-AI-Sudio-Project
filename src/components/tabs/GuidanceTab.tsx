@@ -46,9 +46,9 @@ export const GuidanceTab: React.FC<GuidanceTabProps> = ({ stocks }) => {
           />
 
           <div className="flex-1 overflow-y-auto space-y-1 pr-1 divide-y divide-white/5">
-            {filteredStocks.map((stk) => (
+            {filteredStocks.map((stk, idx) => (
               <button
-                key={stk.Symbol}
+                key={`${stk.Symbol}-${idx}`}
                 onClick={() => setSelectedSymbol(stk.Symbol)}
                 className={`w-full text-left p-2 rounded font-bold transition-all cursor-pointer flex justify-between items-center ${
                   selectedSymbol === stk.Symbol
