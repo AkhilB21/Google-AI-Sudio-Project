@@ -6,6 +6,7 @@ import { MarketRegimeBanner } from './components/shell/MarketRegimeBanner';
 import { TickerFooter } from './components/shell/TickerFooter';
 
 import { ScreenerTab } from './components/tabs/ScreenerTab';
+import { IPOTab } from './components/tabs/IPOTab';
 import { WatchlistTab } from './components/tabs/WatchlistTab';
 import { ScannerTab } from './components/tabs/ScannerTab';
 import { AnalyticsTab } from './components/tabs/AnalyticsTab';
@@ -188,6 +189,10 @@ export default function App() {
       <div className="flex-1 overflow-y-auto bg-[#0B1120]">
         {activeTab === 'screener' && (
           <ScreenerTab stocks={stocks} summary={summary} onSelectStock={handleSelectStock} />
+        )}
+
+        {activeTab === 'ipo' && (
+          <IPOTab stocks={stocks} onSelectStock={handleSelectStock} />
         )}
 
         {activeTab === 'watchlist' && (

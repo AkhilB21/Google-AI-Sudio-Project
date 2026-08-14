@@ -43,6 +43,9 @@ export interface SignalStock {
   };
   GatesExplanations?: [string, string, string, string, string];
   HistoricalL3Events?: Array<{ date: string; event: string; price: number; outcomePct: number }>;
+  // IPO Metadata if tracked
+  isIPO?: boolean;
+  ipoData?: IPOStock;
 }
 
 export interface SignalsSummary {
@@ -72,10 +75,101 @@ export interface SignalsSummary {
   generatedAt: string;
 }
 
-export type TabId = 'screener' | 'watchlist' | 'scanner' | 'analytics' | 'guidance' | 'alerts' | 'system';
+export type TabId = 'screener' | 'watchlist' | 'scanner' | 'analytics' | 'guidance' | 'alerts' | 'system' | 'ipo';
 
 export type QualityLevel = 'STRONG' | 'GOOD' | 'MODERATE' | 'WEAK' | 'N/A';
 export type RiskLevel = 'LOW RISK' | 'MEDIUM' | 'HIGH RISK' | 'IN TRADE' | 'N/A';
+
+export type IPOZone = 'NEW_HIGH' | 'RECOVERY' | 'UNDER_PRESSURE' | 'BROKEN_IPO';
+export type IPOStage = 'FRESH' | 'MATURE';
+
+export interface IPOStock {
+  id: string;
+  symbol: string;
+  company_name: string;
+  issue_price: number;
+  listing_date: string;
+  listing_price: number;
+  all_time_high: number;
+  all_time_low: number;
+  ipo_size: string;
+  sector: string;
+  exchange: string;
+  promoter_stake: number | null;
+  current_pe: number | null;
+  cmp: number;
+  // Computed metrics
+  ipo_baseline: number;
+  zone: IPOZone;
+  listing_stage: IPOStage;
+  days_since_listing: number;
+  distance_to_baseline_pct: number;
+  distance_to_ath_pct: number;
+  return_from_issue_pct: number;
+  baseline_ratio: number;
+  ath_recovery_pct: number;
+  // Cross-system scores (if in main pipeline)
+  Apollo_Score?: number;
+  LayerSignal_Score?: number;
+  Apollo_Action?: string;
+  LayerSignal_Action?: string;
+  Quality?: string;
+  Bucket?: string;
+  Gates?: [boolean, boolean, boolean, boolean, boolean];
+  RSI21?: number;
+  RSI36?: number;
+  ADX?: number;
+  ATR_Pct?: number;
+}
+
+export interface IPOSummary {
+  total: number;
+  zones: {
+    new_high: number;
+    recovery: number;
+    under_pressure: number;
+    broken_ipo: number;
+  };
+  stages: { fresh: number; mature: number };
+  avg_return_from_issue: number;
+  best_performer: { symbol: string; return_pct: number } | null;
+  worst_performer: { symbol: string; return_pct: number } | null;
+  last_updated: string;
+}
+
+export interface ZoneTransition {
+  id: string;
+  symbol: string;
+  old_zone: IPOZone;
+  new_zone: IPOZone;
+  transition_type: 'UPGRADE' | 'DOWNGRADE';
+  cmp_at_transition: number;
+  baseline_at_transition: number;
+  transition_timestamp: string;
+}
+
+export interface IPOArchive {
+  id: string;
+  symbol: string;
+  company_name: string;
+  issue_price: number;
+  listing_date: string;
+  listing_price: number;
+  all_time_high: number;
+  all_time_low: number;
+  ipo_size: string;
+  sector: string;
+  exchange: string;
+  promoter_stake: number | null;
+  current_pe: number | null;
+  zone: string;
+  ipo_baseline: number;
+  days_since_listing: number;
+  listing_stage: string;
+  last_zone_update: string;
+  fetched_at: string;
+  graduated_at: string;
+}
 
 export interface AlertItem {
   id: string;

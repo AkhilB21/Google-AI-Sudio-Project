@@ -5,6 +5,9 @@ import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import { getDb, saveDb } from "./server/db";
+import { registerIPORoutes } from "./server/ipo-routes";
+import { checkGraduations } from "./server/ipo-graduator";
+import { syncIPODataToDatabase } from "./server/ipo-scraper";
 
 interface SignalRow {
   Symbol: string;
@@ -836,6 +839,43 @@ async function startServer() {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // REGISTER IPO ENDPOINTS
+  registerIPORoutes(
+    app,
+    () => db,
+    () => cachedResponse?.data || []
+  );
+
+  // Background Scraper & Graduation Scheduler
+  const scraperIntervalMs = Number(process.env.IPO_SCRAPER_INTERVAL_MS) || 14400000; // 4 hours
+  setInterval(async () => {
+    try {
+      const priceMap = new Map<string, number>();
+      if (cachedResponse?.data) {
+        for (const row of cachedResponse.data) {
+          if (row.Symbol && row.CMP) priceMap.set(row.Symbol.toUpperCase(), row.CMP);
+        }
+      }
+      const count = await syncIPODataToDatabase(db, priceMap);
+      console.log(`[IPO Scraper] Periodic sync completed: ${count} stocks updated.`);
+      broadcast({ type: "IPO_UPDATE", timestamp: new Date().toISOString() });
+    } catch (err) {
+      console.error("[IPO Scraper] Periodic sync error:", err);
+    }
+  }, scraperIntervalMs);
+
+  // Daily Graduation Check (runs every 24 hours, or every 6 hours check)
+  setInterval(() => {
+    try {
+      const gradCount = checkGraduations(db);
+      if (gradCount > 0) {
+        broadcast({ type: "IPO_GRADUATION", count: gradCount });
+      }
+    } catch (err) {
+      console.error("[IPO Graduator] Error checking graduations:", err);
+    }
+  }, 21600000); // 6 hours
 
   // SYSTEM HEALTH API
   app.get("/api/system/health", async (req, res) => {

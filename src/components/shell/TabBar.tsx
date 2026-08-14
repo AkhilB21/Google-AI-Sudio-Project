@@ -15,6 +15,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { id: 'screener', label: 'Screener', priority: 'P0' },
+  { id: 'ipo', label: 'IPO Tab', priority: 'P0' },
   { id: 'watchlist', label: 'Watchlist', priority: 'P0' },
   { id: 'scanner', label: 'Scanner', priority: 'P1' },
   { id: 'analytics', label: 'Analytics', priority: 'P0' },

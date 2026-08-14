@@ -1,6 +1,22 @@
-import React from 'react';
-import { X, TrendingUp, TrendingDown, ShieldAlert, BarChart, ArrowUpRight, ArrowDownRight, Layers, Activity } from 'lucide-react';
-import { SignalStock } from '../types';
+import React, { useState, useEffect } from 'react';
+import {
+  X,
+  TrendingUp,
+  TrendingDown,
+  ShieldAlert,
+  BarChart,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
+  Activity,
+  History,
+  Target,
+  Sparkles,
+  Flame,
+  AlertTriangle,
+  Calendar,
+} from 'lucide-react';
+import { SignalStock, IPOStock, ZoneTransition } from '../types';
 import { SignalBadge } from './SignalBadge';
 import { QualityBadge } from './QualityBadge';
 import { RiskBadge } from './RiskBadge';
@@ -12,6 +28,37 @@ interface DetailPanelProps {
 }
 
 export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
+  const [ipoData, setIpoData] = useState<IPOStock | null>(null);
+  const [zoneHistory, setZoneHistory] = useState<ZoneTransition[]>([]);
+  const [isLoadingIpo, setIsLoadingIpo] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!stock) return;
+
+    if (stock.ipoData) {
+      setIpoData(stock.ipoData);
+    }
+
+    // Check backend for IPO data & zone history
+    setIsLoadingIpo(true);
+    fetch(`/api/ipo/stocks/${stock.Symbol}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && !data.error) {
+          setIpoData(data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingIpo(false));
+
+    fetch(`/api/ipo/zone-history/${stock.Symbol}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((hist) => {
+        if (Array.isArray(hist)) setZoneHistory(hist);
+      })
+      .catch(() => {});
+  }, [stock]);
+
   if (!stock) return null;
 
   const quality = getQualityLevel(stock);
@@ -24,16 +71,57 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
   const range52 = high52 - low52 || 1;
   const pos52Pct = Math.min(100, Math.max(0, ((stock.CMP - low52) / range52) * 100));
 
+  // IPO Zone Thermometer positioning
+  const ipoThermometer = (() => {
+    if (!ipoData) return null;
+    const ip = ipoData.issue_price;
+    const ath = ipoData.all_time_high;
+    const baseline = ipoData.ipo_baseline;
+    const cmp = ipoData.cmp;
+
+    const minScale = Math.min(ip * 0.8, cmp * 0.95);
+    const maxScale = Math.max(ath * 1.1, cmp * 1.05);
+    const totalSpan = maxScale - minScale || 1;
+
+    const ipPct = Math.max(0, Math.min(100, ((ip - minScale) / totalSpan) * 100));
+    const basePct = Math.max(0, Math.min(100, ((baseline - minScale) / totalSpan) * 100));
+    const athPct = Math.max(0, Math.min(100, ((ath - minScale) / totalSpan) * 100));
+    const cmpPct = Math.max(0, Math.min(100, ((cmp - minScale) / totalSpan) * 100));
+
+    return { ipPct, basePct, athPct, cmpPct, minScale, maxScale };
+  })();
+
+  const getZoneColor = (z: string) => {
+    switch (z) {
+      case 'NEW_HIGH':
+        return 'text-[#3fb950] bg-emerald-500/20 border-[#3fb950]/40';
+      case 'RECOVERY':
+        return 'text-[#58a6ff] bg-blue-500/20 border-[#58a6ff]/40';
+      case 'UNDER_PRESSURE':
+        return 'text-[#d29922] bg-amber-500/20 border-[#d29922]/40';
+      case 'BROKEN_IPO':
+        return 'text-[#f87171] bg-red-500/20 border-[#f87171]/40';
+      default:
+        return 'text-slate-400 bg-slate-800 border-slate-700';
+    }
+  };
+
   return (
-    <div className="fixed inset-y-0 right-0 w-full sm:w-[500px] lg:w-[540px] bg-[#0B1120] border-l border-[#334155] shadow-2xl z-50 flex flex-col text-slate-200 overflow-hidden animate-in slide-in-from-right duration-300">
+    <div className="fixed inset-y-0 right-0 w-full sm:w-[500px] lg:w-[560px] bg-[#0B1120] border-l border-[#334155] shadow-2xl z-50 flex flex-col text-slate-200 overflow-hidden animate-in slide-in-from-right duration-300">
       {/* PANEL HEADER */}
       <div className="p-6 bg-[#111827] border-b border-[#334155] flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-black text-white tracking-tight">{stock.Symbol}</h2>
-            <span className="text-xs font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-              NSE:EQUITY
-            </span>
+            {ipoData ? (
+              <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" /> IPO Stock ({ipoData.listing_stage})
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                NSE:EQUITY
+              </span>
+            )}
           </div>
           <p className="text-xs text-slate-400 font-mono mt-1">
             Engine Signal Date: <span className="text-slate-200">{stock.Date}</span>
@@ -50,6 +138,148 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
 
       {/* PANEL CONTENT - SCROLLABLE */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* IPO LIFECYCLE & ZONE POSITION THERMOMETER (RENDERED IF STOCK IS AN IPO) */}
+        {ipoData && (
+          <div className="p-4 rounded-xl bg-[#111827] border-2 border-indigo-500/40 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-indigo-400" /> IPO Zone Position & Lifecycle
+              </span>
+              <span className={`px-2 py-0.5 rounded text-xs font-extrabold border font-mono ${getZoneColor(ipoData.zone)}`}>
+                {ipoData.zone.replace('_', ' ')}
+              </span>
+            </div>
+
+            {/* ZONE THERMOMETER */}
+            {ipoThermometer && (
+              <div className="space-y-2 pt-1">
+                <div className="relative pt-6 pb-4">
+                  {/* Gauge Track */}
+                  <div className="h-2.5 bg-slate-900 rounded-full overflow-hidden flex border border-white/10">
+                    <div style={{ width: `${ipoThermometer.ipPct}%` }} className="h-full bg-red-500/40" title="Broken IPO Zone" />
+                    <div
+                      style={{ width: `${Math.max(0, ipoThermometer.basePct - ipoThermometer.ipPct)}%` }}
+                      className="h-full bg-amber-500/40"
+                      title="Under Pressure Zone"
+                    />
+                    <div
+                      style={{ width: `${Math.max(0, ipoThermometer.athPct - ipoThermometer.basePct)}%` }}
+                      className="h-full bg-blue-500/40"
+                      title="Recovery Zone"
+                    />
+                    <div
+                      style={{ width: `${Math.max(0, 100 - ipoThermometer.athPct)}%` }}
+                      className="h-full bg-emerald-500/40"
+                      title="New High Zone"
+                    />
+                  </div>
+
+                  {/* CMP Indicator Pointer */}
+                  <div
+                    className="absolute top-2.5 -translate-x-1/2 flex flex-col items-center pointer-events-none"
+                    style={{ left: `${ipoThermometer.cmpPct}%` }}
+                  >
+                    <div className="w-4 h-4 rounded-full bg-white border-2 border-indigo-500 shadow-lg shadow-indigo-500/50 flex items-center justify-center animate-pulse" />
+                    <span className="text-[10px] font-black font-mono text-white bg-indigo-600 px-1 rounded shadow mt-0.5">
+                      ₹{ipoData.cmp.toFixed(0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Thermometer Reference Labels */}
+                <div className="grid grid-cols-3 text-[10px] font-mono pt-1 text-center border-t border-white/5">
+                  <div className="text-left text-slate-400">
+                    <span className="text-red-400 font-bold block">Issue Price</span>
+                    <span>₹{ipoData.issue_price.toFixed(1)}</span>
+                  </div>
+                  <div className="text-center text-indigo-300">
+                    <span className="text-indigo-400 font-bold block">IPO Baseline</span>
+                    <span>₹{ipoData.ipo_baseline.toFixed(1)}</span>
+                  </div>
+                  <div className="text-right text-slate-400">
+                    <span className="text-emerald-400 font-bold block">All-Time High</span>
+                    <span>₹{ipoData.all_time_high.toFixed(1)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 6 COMPACT IPO METRICS */}
+            <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">Dist to Base</span>
+                <span className={`text-xs font-bold ${ipoData.distance_to_baseline_pct >= 0 ? 'text-[#58a6ff]' : 'text-amber-400'}`}>
+                  {ipoData.distance_to_baseline_pct >= 0 ? '+' : ''}
+                  {ipoData.distance_to_baseline_pct}%
+                </span>
+              </div>
+
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">Dist to ATH</span>
+                <span className="text-xs font-bold text-slate-300">{ipoData.distance_to_ath_pct}%</span>
+              </div>
+
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">Return vs Offer</span>
+                <span className={`text-xs font-bold ${ipoData.return_from_issue_pct >= 0 ? 'text-[#3fb950]' : 'text-[#f87171]'}`}>
+                  {ipoData.return_from_issue_pct >= 0 ? '+' : ''}
+                  {ipoData.return_from_issue_pct}%
+                </span>
+              </div>
+
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">Listing Age</span>
+                <span className="text-xs font-bold text-white">{ipoData.days_since_listing} Days</span>
+              </div>
+
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">Baseline Ratio</span>
+                <span className="text-xs font-bold text-indigo-300">{ipoData.baseline_ratio}x</span>
+              </div>
+
+              <div className="p-2.5 bg-[#0B1120] rounded-lg border border-[#334155]">
+                <span className="text-[9px] text-slate-400 block">ATH Recovery</span>
+                <span className="text-xs font-bold text-emerald-400">{ipoData.ath_recovery_pct}%</span>
+              </div>
+            </div>
+
+            {/* HISTORICAL ZONE TRANSITION TIMELINE */}
+            {zoneHistory.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                  <History className="w-3 h-3 text-slate-400" /> Zone Transition Timeline
+                </span>
+                <div className="space-y-1.5">
+                  {zoneHistory.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className="p-2 bg-[#0B1120] rounded border border-white/5 flex items-center justify-between text-[11px] font-mono"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            item.transition_type === 'UPGRADE'
+                              ? 'bg-emerald-500/20 text-[#3fb950]'
+                              : 'bg-red-500/20 text-[#f87171]'
+                          }`}
+                        >
+                          {item.transition_type}
+                        </span>
+                        <span className="text-slate-400">{item.old_zone}</span>
+                        <span className="text-slate-600">&rarr;</span>
+                        <span className="text-white font-bold">{item.new_zone}</span>
+                      </div>
+                      <div className="text-slate-400 text-[10px]">
+                        ₹{item.cmp_at_transition?.toFixed(0)} &bull; {item.transition_timestamp?.split('T')[0] || item.transition_timestamp?.split(' ')[0]}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* SIGNAL ACTION SUMMARY ROW */}
         <div className="p-4 rounded-xl bg-[#111827] border border-[#334155] flex items-center justify-between">
           <div className="space-y-1">
@@ -81,7 +311,11 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
             <div className="text-xl font-extrabold text-white font-mono mt-1">
               {formatCurrencyINR(stock.CMP || stock.Close)}
             </div>
-            <div className={`mt-1 text-xs font-mono font-bold flex items-center gap-1 ${isPositive ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+            <div
+              className={`mt-1 text-xs font-mono font-bold flex items-center gap-1 ${
+                isPositive ? 'text-[#3fb950]' : 'text-[#f85149]'
+              }`}
+            >
               {isPositive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
               {stock.Pct_Change >= 0 ? `+${stock.Pct_Change.toFixed(2)}%` : `${stock.Pct_Change.toFixed(2)}%`}
             </div>
@@ -100,14 +334,18 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
             <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Apollo Score</span>
             <div className="text-xl font-extrabold text-[#a371f7] font-mono mt-1">
               {stock.Apollo_Score?.toFixed(1) || '0.0'}
-              <span className="text-xs text-slate-500 font-normal"> / 100</span>
+              <span className="text-xs text-slate-500 font-normal"> / 148</span>
             </div>
             <p className="text-[10px] text-slate-400 mt-1">Action: {stock.Apollo_Action}</p>
           </div>
 
           <div className="p-4 rounded-xl bg-[#111827] border border-[#334155]">
             <span className="text-[10px] uppercase font-mono font-bold text-slate-400">Exit Pressure</span>
-            <div className={`text-xl font-extrabold font-mono mt-1 ${stock.Exit_Pressure > 50 ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
+            <div
+              className={`text-xl font-extrabold font-mono mt-1 ${
+                stock.Exit_Pressure > 50 ? 'text-[#f85149]' : 'text-[#3fb950]'
+              }`}
+            >
               {stock.Exit_Pressure?.toFixed(1) || '0.0'}
             </div>
             <p className="text-[10px] text-slate-400 mt-1">Profit-Taking Risk</p>
@@ -152,9 +390,17 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-xs font-mono">
             <div className="flex justify-between border-b border-white/5 pb-1">
-              <span className="text-slate-400">RSI (14)</span>
-              <span className={`font-bold ${stock.RSI > 70 ? 'text-[#f85149]' : stock.RSI < 30 ? 'text-[#3fb950]' : 'text-slate-200'}`}>
-                {stock.RSI?.toFixed(1) || 'N/A'}
+              <span className="text-slate-400">RSI (21)</span>
+              <span
+                className={`font-bold ${
+                  (stock.RSI21 ?? 50) > 70
+                    ? 'text-[#f85149]'
+                    : (stock.RSI21 ?? 50) < 30
+                    ? 'text-[#3fb950]'
+                    : 'text-slate-200'
+                }`}
+              >
+                {stock.RSI21?.toFixed(1) || 'N/A'}
               </span>
             </div>
 
@@ -164,18 +410,13 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
             </div>
 
             <div className="flex justify-between border-b border-white/5 pb-1">
-              <span className="text-slate-400">20D SMA</span>
-              <span className="font-bold text-slate-200">{formatCurrencyINR(stock['20D_SMA'])}</span>
+              <span className="text-slate-400">ADX Trend Strength</span>
+              <span className="font-bold text-indigo-300">{stock.ADX?.toFixed(1) || 'N/A'}</span>
             </div>
 
             <div className="flex justify-between border-b border-white/5 pb-1">
-              <span className="text-slate-400">50D SMA</span>
-              <span className="font-bold text-slate-200">{formatCurrencyINR(stock['50D_SMA'])}</span>
-            </div>
-
-            <div className="flex justify-between border-b border-white/5 pb-1">
-              <span className="text-slate-400">200D SMA</span>
-              <span className="font-bold text-slate-200">{formatCurrencyINR(stock['200D_SMA'])}</span>
+              <span className="text-slate-400">ATR Volatility %</span>
+              <span className="font-bold text-slate-200">{stock.ATR_Pct?.toFixed(1) || 'N/A'}%</span>
             </div>
 
             <div className="flex justify-between border-b border-white/5 pb-1">
@@ -220,23 +461,8 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({ stock, onClose }) => {
             <span className="text-white font-bold">{stock.Volume?.toLocaleString('en-IN')}</span>
           </div>
         </div>
-
-        {/* ALL 19 FIELDS RAW MAPPING */}
-        <div className="p-4 rounded-xl bg-[#111827] border border-[#334155] space-y-3">
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
-            Complete Field Telemetry
-          </h4>
-
-          <div className="divide-y divide-white/5 text-xs font-mono">
-            {Object.entries(stock).map(([key, val]) => (
-              <div key={key} className="py-1.5 flex justify-between items-center">
-                <span className="text-slate-500">{key}</span>
-                <span className="text-slate-300 font-semibold">{String(val)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
 };
+

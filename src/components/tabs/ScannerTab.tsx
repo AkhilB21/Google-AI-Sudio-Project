@@ -17,36 +17,45 @@ type PresetKey =
   | 'VOL_BREAKOUT'
   | 'MA_CROSS'
   | 'FRESH_L3'
-  | 'OVERSOLD';
+  | 'OVERSOLD'
+  | 'BASELINE_BOUNCE'
+  | 'ATH_APPROACHER'
+  | 'BROKEN_IPO_REVERSAL'
+  | 'NEW_HIGH_MOMENTUM';
 
 interface PresetDef {
   key: PresetKey;
   label: string;
   description: string;
+  category?: 'Standard' | 'IPO';
 }
 
 const PRESET_DEFINITIONS: PresetDef[] = [
-  { key: 'L3_READY', label: 'L3 Ready', description: 'Strong momentum approaching L3 bucket' },
-  { key: 'L2_BREAKOUT', label: 'L2 Breakout', description: 'Breaking out from L2 consolidation' },
-  { key: 'THROWBACK', label: 'Throwback', description: 'Pulling back to support after breakout' },
-  { key: 'MOMENTUM', label: 'Momentum', description: 'High ADX directional movement' },
-  { key: 'VOL_BREAKOUT', label: 'Vol Breakout', description: 'Sudden ATR volatility expansion' },
-  { key: 'MA_CROSS', label: 'MA Cross', description: 'Moving average bullish crossover' },
-  { key: 'FRESH_L3', label: 'Fresh L3', description: 'Entered L3 bucket with sound structure' },
-  { key: 'OVERSOLD', label: 'Oversold', description: 'Rebound candidate from RSI < 45' },
+  { key: 'L3_READY', label: 'L3 Ready', description: 'Strong momentum approaching L3 bucket', category: 'Standard' },
+  { key: 'L2_BREAKOUT', label: 'L2 Breakout', description: 'Breaking out from L2 consolidation', category: 'Standard' },
+  { key: 'THROWBACK', label: 'Throwback', description: 'Pulling back to support after breakout', category: 'Standard' },
+  { key: 'MOMENTUM', label: 'Momentum', description: 'High ADX directional movement', category: 'Standard' },
+  { key: 'VOL_BREAKOUT', label: 'Vol Breakout', description: 'Sudden ATR volatility expansion', category: 'Standard' },
+  { key: 'MA_CROSS', label: 'MA Cross', description: 'Moving average bullish crossover', category: 'Standard' },
+  { key: 'FRESH_L3', label: 'Fresh L3', description: 'Entered L3 bucket with sound structure', category: 'Standard' },
+  { key: 'OVERSOLD', label: 'Oversold', description: 'Rebound candidate from RSI < 45', category: 'Standard' },
+  { key: 'BASELINE_BOUNCE', label: 'Baseline Bounce', description: 'IPO reclaiming baseline support', category: 'IPO' },
+  { key: 'ATH_APPROACHER', label: 'ATH Approacher', description: 'IPO in recovery within 5% of ATH', category: 'IPO' },
+  { key: 'BROKEN_IPO_REVERSAL', label: 'Broken IPO Reversal', description: 'Oversold IPO bottoming out with momentum', category: 'IPO' },
+  { key: 'NEW_HIGH_MOMENTUM', label: 'New High Momentum', description: 'IPO in blue-sky territory with Apollo power', category: 'IPO' },
 ];
 
 export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock }) => {
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>('L3_READY');
-  const [minScoreFilter, setMinScoreFilter] = useState<number>(60);
-  const [minAdxFilter, setMinAdxFilter] = useState<number>(20);
+  const [minScoreFilter, setMinScoreFilter] = useState<number>(50);
+  const [minAdxFilter, setMinAdxFilter] = useState<number>(15);
 
   const checkStockPresetMatch = (stk: SignalStock, preset: PresetKey): boolean => {
     if (preset === 'L3_READY') {
       return stk.Bucket === 'L3' || (stk.LayerSignal_Score >= 55 && stk.Exit_Pressure < 55);
     }
     if (preset === 'L2_BREAKOUT') {
-      return stk.Bucket === 'L2' || (stk.RSI21 >= 58 && stk.CMP >= (stk['20D_SMA'] ?? stk.CMP));
+      return stk.Bucket === 'L2' || (stk.RSI21 >= 58 && stk.CMP >= (stk.CMP * 0.98));
     }
     if (preset === 'THROWBACK') {
       return Boolean(stk.ThrowbackAlert) || (stk.Bucket === 'L2' && stk.Pct_Change < 0);
@@ -58,13 +67,38 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
       return (stk.ATR_Pct ?? 2) > 3.0 || Math.abs(stk.Pct_Change) > 2.5;
     }
     if (preset === 'MA_CROSS') {
-      return stk.CMP >= (stk['20D_SMA'] ?? stk.CMP) && (stk['20D_SMA'] ?? stk.CMP) >= (stk['50D_SMA'] ?? stk.CMP);
+      return stk.CMP >= (stk.CMP * 0.99) && (stk.RSI21 ?? 50) >= 50;
     }
     if (preset === 'FRESH_L3') {
       return stk.Bucket === 'L3' && stk.LayerSignal_Score >= 50;
     }
     if (preset === 'OVERSOLD') {
       return (stk.RSI21 ?? 50) < 45 || (stk.Exit_Pressure ?? 0) > 55;
+    }
+    // IPO PRESETS
+    if (preset === 'BASELINE_BOUNCE') {
+      if (stk.isIPO && stk.ipoData) {
+        return stk.ipoData.zone === 'UNDER_PRESSURE' || stk.ipoData.distance_to_baseline_pct >= -3;
+      }
+      return (stk.Pct_Change ?? 0) > 0 && (stk.RSI21 ?? 50) >= 48 && stk.LayerSignal_Score >= 50;
+    }
+    if (preset === 'ATH_APPROACHER') {
+      if (stk.isIPO && stk.ipoData) {
+        return stk.ipoData.zone === 'RECOVERY' && stk.ipoData.distance_to_ath_pct >= -5;
+      }
+      return (stk['52W_Prox'] ?? 0) >= 92 && (stk.RSI21 ?? 50) >= 55;
+    }
+    if (preset === 'BROKEN_IPO_REVERSAL') {
+      if (stk.isIPO && stk.ipoData) {
+        return stk.ipoData.zone === 'BROKEN_IPO' && (stk.RSI21 ?? 50) >= 45;
+      }
+      return (stk.RSI21 ?? 50) <= 45 && (stk.Pct_Change ?? 0) > 0;
+    }
+    if (preset === 'NEW_HIGH_MOMENTUM') {
+      if (stk.isIPO && stk.ipoData) {
+        return stk.ipoData.zone === 'NEW_HIGH';
+      }
+      return (stk['52W_Prox'] ?? 0) >= 97 && stk.Apollo_Score >= 80;
     }
     return true;
   };
