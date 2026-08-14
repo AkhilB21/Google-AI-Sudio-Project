@@ -52,10 +52,10 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
       return Boolean(stk.ThrowbackAlert) || (stk.Bucket === 'L2' && stk.Pct_Change < 0);
     }
     if (preset === 'MOMENTUM') {
-      return (stk.ADX || 25) > 28 && (stk.RSI21 || 50) >= 52;
+      return (stk.ADX ?? 25) > 28 && (stk.RSI21 ?? 50) >= 52;
     }
     if (preset === 'VOL_BREAKOUT') {
-      return (stk.ATR_Pct || 2) > 3.0 || Math.abs(stk.Pct_Change) > 2.5;
+      return (stk.ATR_Pct ?? 2) > 3.0 || Math.abs(stk.Pct_Change) > 2.5;
     }
     if (preset === 'MA_CROSS') {
       return stk.CMP >= (stk['20D_SMA'] ?? stk.CMP) && (stk['20D_SMA'] ?? stk.CMP) >= (stk['50D_SMA'] ?? stk.CMP);
@@ -64,7 +64,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
       return stk.Bucket === 'L3' && stk.LayerSignal_Score >= 50;
     }
     if (preset === 'OVERSOLD') {
-      return (stk.RSI21 || 50) < 45 || (stk.Exit_Pressure || 0) > 55;
+      return (stk.RSI21 ?? 50) < 45 || (stk.Exit_Pressure ?? 0) > 55;
     }
     return true;
   };
@@ -78,26 +78,26 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
   // Filter stocks matching selected preset logic and custom thresholds
   const filteredMatches = stocks.filter((stk) => {
     if (stk.LayerSignal_Score < minScoreFilter) return false;
-    if ((stk.ADX || 25) < minAdxFilter) return false;
+    if ((stk.ADX ?? 25) < minAdxFilter) return false;
     return checkStockPresetMatch(stk, selectedPreset);
   });
 
   const computeMatchScore = (stk: SignalStock, preset: PresetKey): number => {
     const base = 68;
     const scoreFactor = (stk.LayerSignal_Score / 100) * 16;
-    const gateBonus = (stk.Gates?.filter(Boolean).length || 3) * 2.2;
+    const gateBonus = (stk.Gates?.filter(Boolean).length ?? 3) * 2.2;
     let presetBonus = 0;
-    if (preset === 'MOMENTUM') presetBonus = Math.min(10, ((stk.ADX || 25) / 40) * 10);
+    if (preset === 'MOMENTUM') presetBonus = Math.min(10, ((stk.ADX ?? 25) / 40) * 10);
     else if (preset === 'THROWBACK') presetBonus = stk.ThrowbackAlert ? 10 : 4;
     else if (preset === 'L2_BREAKOUT') presetBonus = stk.Bucket === 'L2' ? 10 : 5;
     else if (preset === 'L3_READY') presetBonus = stk.Bucket === 'L3' ? 10 : 6;
-    else if (preset === 'VOL_BREAKOUT') presetBonus = Math.min(10, ((stk.ATR_Pct || 2) / 4) * 10);
+    else if (preset === 'VOL_BREAKOUT') presetBonus = Math.min(10, ((stk.ATR_Pct ?? 2) / 4) * 10);
     else if (preset === 'MA_CROSS') presetBonus = stk.CMP >= (stk['20D_SMA'] ?? stk.CMP) ? 10 : 3;
     else presetBonus = 6;
     return parseFloat(Math.min(99.4, Math.max(68.0, base + scoreFactor + gateBonus + presetBonus)).toFixed(1));
   };
 
-  const activePresetDef = PRESET_DEFINITIONS.find((p) => p.key === selectedPreset) || PRESET_DEFINITIONS[0];
+  const activePresetDef = PRESET_DEFINITIONS.find((p) => p.key === selectedPreset) ?? PRESET_DEFINITIONS[0];
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 p-4 max-w-full overflow-hidden text-slate-200 font-sans">
@@ -114,7 +114,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
         <div className="space-y-1.5">
           {PRESET_DEFINITIONS.map((p) => {
             const isSelected = p.key === selectedPreset;
-            const count = presetCounts[p.key] || 0;
+            const count = presetCounts[p.key] ?? 0;
             return (
               <button
                 key={p.key}
@@ -187,7 +187,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
                     : 'bg-black/30 text-slate-400 border-white/5 hover:border-white/20'
                 }`}
               >
-                {p.label}: <span className="text-white font-extrabold">{presetCounts[p.key] || 0}</span>
+                {p.label}: <span className="text-white font-extrabold">{presetCounts[p.key] ?? 0}</span>
               </button>
             ))}
           </div>
