@@ -55,7 +55,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
       return stk.Bucket === 'L3' || (stk.LayerSignal_Score >= 55 && stk.Exit_Pressure < 55);
     }
     if (preset === 'L2_BREAKOUT') {
-      return stk.Bucket === 'L2' || (stk.RSI21 >= 58 && stk.CMP >= (stk.CMP * 0.98));
+      return stk.Bucket === 'L2' || (stk.RSI21 >= 58 && stk.CMP >= (stk['20D_SMA'] ?? stk.CMP));
     }
     if (preset === 'THROWBACK') {
       return Boolean(stk.ThrowbackAlert) || (stk.Bucket === 'L2' && stk.Pct_Change < 0);
@@ -67,7 +67,7 @@ export const ScannerTab: React.FC<ScannerTabProps> = ({ stocks, onSelectStock })
       return (stk.ATR_Pct ?? 2) > 3.0 || Math.abs(stk.Pct_Change) > 2.5;
     }
     if (preset === 'MA_CROSS') {
-      return stk.CMP >= (stk.CMP * 0.99) && (stk.RSI21 ?? 50) >= 50;
+      return stk.CMP >= (stk['20D_SMA'] ?? stk.CMP) && (stk['20D_SMA'] ?? stk.CMP) >= (stk['50D_SMA'] ?? stk.CMP);
     }
     if (preset === 'FRESH_L3') {
       return stk.Bucket === 'L3' && stk.LayerSignal_Score >= 50;

@@ -18,7 +18,9 @@ export interface IPORawRecord {
   cmp?: number;
 }
 
-// 25+ Comprehensive Realistic Indian IPO Records across diverse sectors and post-listing ages
+// 25+ Comprehensive Realistic Indian IPO Records across diverse sectors and post-listing ages.
+// NOTE: Seed CMP values provide initial bootstrap data and are dynamically updated by live scraper fetches
+// and cross-system price feeds via `enrichWithSignalData()` and `syncIPODataToDatabase()`.
 export const SEED_IPO_STOCKS: IPORawRecord[] = [
   {
     symbol: 'TATATECH',

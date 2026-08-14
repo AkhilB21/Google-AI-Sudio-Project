@@ -114,13 +114,13 @@ export const IPOTab: React.FC<IPOTabProps> = ({ stocks, onSelectStock, onSelectI
       const syntheticSignal: SignalStock = {
         Symbol: ipo.symbol,
         Date: ipo.listing_date,
-        Apollo_Action: ipo.Apollo_Action || (ipo.zone === 'RECOVERY' || ipo.zone === 'NEW_HIGH' ? 'ENTRY' : 'HOLD'),
+        Apollo_Action: ipo.Apollo_Action ?? (ipo.zone === 'RECOVERY' || ipo.zone === 'NEW_HIGH' ? 'ENTRY' : 'HOLD'),
         Apollo_Score: ipo.Apollo_Score ?? 92.5,
         Pct_Change: ipo.return_from_issue_pct > 0 ? 1.8 : -1.2,
-        LayerSignal_Action: ipo.LayerSignal_Action || (ipo.zone === 'NEW_HIGH' ? 'ENTRY' : 'HOLD'),
+        LayerSignal_Action: ipo.LayerSignal_Action ?? (ipo.zone === 'NEW_HIGH' ? 'ENTRY' : 'HOLD'),
         LayerSignal_Score: ipo.LayerSignal_Score ?? 78.4,
         Exit_Pressure: ipo.zone === 'BROKEN_IPO' ? 72 : 32,
-        Open: ipo.listing_price || ipo.issue_price,
+        Open: ipo.listing_price ?? ipo.issue_price,
         High: ipo.all_time_high,
         Low: ipo.all_time_low,
         Close: ipo.cmp,
@@ -137,15 +137,15 @@ export const IPOTab: React.FC<IPOTabProps> = ({ stocks, onSelectStock, onSelectI
         '52W_Prox': ipo.ath_recovery_pct,
         CMP: ipo.cmp,
         Traded_Value: 450000000,
-        Bucket: (ipo.Bucket as any) || (ipo.zone === 'NEW_HIGH' ? 'L1' : 'L2'),
+        Bucket: (ipo.Bucket as any) ?? (ipo.zone === 'NEW_HIGH' ? 'L1' : 'L2'),
         LStage: ipo.listing_stage === 'FRESH' ? 'Stage 1' : 'Stage 2',
         ELStatus: 'NONE',
         Conviction: 0.85,
-        Gates: ipo.Gates || [true, true, true, true, false],
+        Gates: ipo.Gates ?? [true, true, true, true, false],
         Renko: ipo.zone === 'BROKEN_IPO' ? 'RED' : 'GREEN',
         MCap: ipo.cmp * 10000000 > 20000000000 ? 'Large' : 'Mid',
         FQS: 'A',
-        Sparkline: [ipo.issue_price, ipo.listing_price, ipo.ipo_baseline, ipo.cmp],
+        Sparkline: [ipo.issue_price, ipo.listing_price ?? ipo.issue_price, ipo.ipo_baseline, ipo.cmp],
         isIPO: true,
         ipoData: ipo,
       };
@@ -359,7 +359,7 @@ export const IPOTab: React.FC<IPOTabProps> = ({ stocks, onSelectStock, onSelectI
           </div>
           <div className="text-xs text-white font-bold mt-1">4-Hour Cycle</div>
           <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
-            <span>Last: {lastSyncTime || 'Active'}</span>
+            <span>Last: {lastSyncTime ?? 'Active'}</span>
             <span className="text-emerald-400 font-bold">Auto-Sync</span>
           </div>
         </div>

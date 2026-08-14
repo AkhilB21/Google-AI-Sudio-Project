@@ -51,7 +51,9 @@ export function computeIpoMetrics(stock: any, cmpOverride?: number): ComputedIPO
       const listDate = new Date(stock.listing_date);
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - listDate.getTime());
-      days_since_listing = Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      const calendarDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      // Convert calendar days to approximate trading days (~5 trading days per 7 calendar days, approx 240 trading days/year)
+      days_since_listing = Math.max(1, Math.floor(calendarDays * (5 / 7)));
     } else {
       days_since_listing = 30;
     }

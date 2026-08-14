@@ -19,6 +19,9 @@ export interface SignalStock {
   RSI56: number;
   ADX: number;
   ATR_Pct: number;
+  '20D_SMA'?: number;
+  '50D_SMA'?: number;
+  '200D_SMA'?: number;
   PE: number;
   Stochastic: number;
   '52W_Prox': number;

@@ -135,7 +135,7 @@ export async function getDb(): Promise<Database> {
     );
   `);
 
-  // Seed default IPO stocks if empty
+  // Seed default IPO stocks if empty (bootstrap demo data with realistic baseline prices until live scraper/signal feed updates CMP)
   const ipoCount = dbInstance.exec("SELECT COUNT(*) FROM ipo_stocks")[0]?.values[0][0] || 0;
   if (ipoCount === 0) {
     dbInstance.exec(`
